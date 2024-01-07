@@ -3,7 +3,7 @@
 import { MutableRefObject, useEffect, useRef } from "react";
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+
 
 
 
@@ -18,38 +18,21 @@ export default function DotPage() {
 function setScene(ref: MutableRefObject<any>) { 
     if (!ref.current) { return}
     var scene = new THREE.Scene();
-    var camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 1, 10000);
+    var camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 1, 120);
     var renderer = new THREE.WebGLRenderer({antialias: true});
     renderer.toneMapping = THREE.CineonToneMapping;
     renderer.toneMappingExposure = 1.5;
     renderer.setSize(window.innerWidth, window.innerHeight);
     ref.current.appendChild(renderer.domElement);
-    camera.position.set(0, 0, 100)
+    camera.position.set(0, 0, -50)
 
 
-    const directionalLight = new THREE.DirectionalLight(0xFF1111, 1);
-    directionalLight.position.set(100, 100, 150);
-    directionalLight.lookAt(0, 0, 0);
-    directionalLight.castShadow = true;
-    // Set up shadow properties for the light
-    directionalLight.shadow.mapSize.width = 1024;
-    directionalLight.shadow.mapSize.height = 1024;
-    const helper = new THREE.DirectionalLightHelper(directionalLight, 5);
-
-    scene.add(directionalLight)
-    scene.add(helper)
     const controls = new OrbitControls( camera, renderer.domElement );
 
     const dots = addDots(scene)
     addLine(dots, scene)
 
-    const light = new THREE.AmbientLight(0xffffff, 1);
-    scene.add(light);
-    const box = new THREE.Mesh(new THREE.BoxGeometry(12,12,12), new THREE.MeshStandardMaterial());
-    scene.add(box)
-
-
-
+    scene.add(new THREE.AmbientLight())
     let randomDestination: THREE.Vector3[] = [];
     const dummy = new THREE.Object3D();
     camera.position.set(80,20,100)   
@@ -115,7 +98,7 @@ function addDots(scene: THREE.Scene) {
     for (var x = 0; x < 6; x++) { 
         for (var y = 0; y < 6; y++) { 
             for (var z = 0; z < 6; z++) { 
-                dummy.position.set(x*15+getRandomInt(-15,15),y*15+getRandomInt(-15,15),z*15+getRandomInt(-15,15))
+                dummy.position.set(x*16+getRandomInt(-10,10),y*16+getRandomInt(-10,10),z*16+getRandomInt(-10,10))
                 dummy.updateMatrix();
        
                 instancedMesh.setMatrixAt(count, dummy.matrix);
