@@ -21,12 +21,10 @@ function setScene(ref: MutableRefObject<any>) {
 
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(20, window.innerWidth / window.innerHeight, 0.1, 500);
+    const camera = new THREE.PerspectiveCamera(20, window.innerWidth / window.innerHeight, 0.1, 300);
     const renderer = new THREE.WebGLRenderer();
     renderer.setSize(window.innerWidth, window.innerHeight);
     ref.current.appendChild(renderer.domElement);
-
-    const controls = new OrbitControls(camera, renderer.domElement);
 
     scene.add(new THREE.AmbientLight());
     addPlane(scene)
@@ -41,6 +39,16 @@ function setScene(ref: MutableRefObject<any>) {
 
         requestAnimationFrame(animate);
         renderer.render(scene, camera);
+        camera.position.z += velocity;
+        if (velocity > 0) { 
+            velocity -= 1;
+        } 
+        if (velocity < 0) { 
+            velocity += 1;
+        }
+        if (camera.position.z < -600) { 
+            camera.position.z = 0;
+        }
 
     }
 
@@ -54,11 +62,7 @@ function setScene(ref: MutableRefObject<any>) {
 
     }
     function onWheel(e: WheelEvent) {
-        if (e.deltaX > 0) {
-            velocity += 0.001
-        } else if (e.deltaX < 0) {
-            velocity -= 0.001;
-        }
+        velocity += e.deltaY*0.05;
     }
     window.addEventListener('resize', onWindowResize, false);
     window.addEventListener('wheel', onWheel, false);

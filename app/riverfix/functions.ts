@@ -43,7 +43,7 @@ export function addPlane(scene: THREE.Scene) {
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
     texture.repeat.set(5, 5)
-    const planeMesh = new THREE.InstancedMesh(geometry, material, 10);
+    const planeMesh = new THREE.InstancedMesh(geometry, material, 20);
     const dummy = new THREE.Object3D();
     const offset = 100;
     for (var i = 0; i < planeMesh.count; i++) {
@@ -106,31 +106,35 @@ export function loadObjGrassModel(scene: THREE.Scene) {
 
 function setPositions(scene: THREE.Scene, mesh: THREE.InstancedMesh, points: THREE.TypedArray) { 
     const dummy = new THREE.Object3D();
-    for (var instances = 0; instances < 10; instances++) { 
+    for (var instances = 0; instances <= 10; instances++) { 
         for (var i = 0; i < points.length; i += 3) { 
-           
-            const x = points[i] + (instances * -100) + getRandomArbitrary(-1, 1)
-            const y = points[i + 1] + getRandomArbitrary(-1, 1)
-            const z = points[i + 2] - 0.4;
-            const scale = getRandomArbitrary(1, 2);
-            dummy.position.set(x, y, z);
-            dummy.scale.set(scale, scale, scale);
-            dummy.updateMatrix();
-            mesh.setMatrixAt(i / 3 + instances * (points.length / 3), dummy.matrix);
+            if (Math.random() > 0.8) { 
+                const x = Math.random()*-1500;
+                const y = points[i + 1] + getRandomArbitrary(-1, 1)
+                const percentageToCenter = (1-Math.abs(x)/25);
+                const startingPoint = -5+(percentageToCenter*10);
+                let z;
+                if (y > startingPoint && y < startingPoint + 10) { 
+                    z = 100;
+                } else { 
+                    z = points[i + 2] -2;
+                }
+         
+                const scale = getRandomArbitrary(1, 2);
+                dummy.position.set(x, y, z);
+                dummy.scale.set(scale, scale, scale);
+                dummy.updateMatrix();
+                mesh.setMatrixAt(i / 3 + (instances * (points.length / 3)), dummy.matrix);
+            
+
+            }
+              
             
 
         }
     }
     mesh.instanceMatrix.needsUpdate = true;
     scene.add(mesh);
-}
-
-
-function mapToSection(inputNumber: number, sectionSize: number) {
-
-  const sectionIndex = Math.floor(inputNumber / sectionSize);
-  const mappedValue = sectionIndex * sectionSize;
-  return mappedValue;
 }
 
 

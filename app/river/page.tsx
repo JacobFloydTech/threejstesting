@@ -72,7 +72,7 @@ export function addWater(scene: THREE.Scene) {
 
 export function addPlane(scene: THREE.Scene) {
 
-    const geometry = new THREE.BoxGeometry(100, 50, 100, 25, 25, 25,);
+    const geometry = new THREE.BoxGeometry(100, 50, 100, 10, 10, 10,);
     const texture = new THREE.TextureLoader().load('/grass.jpg')
     const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide })
     texture.wrapS = THREE.RepeatWrapping;
