@@ -3,7 +3,8 @@ import { MutableRefObject, useEffect, useRef } from 'react'
 import * as THREE from 'three'
 
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { Water } from 'three/addons/objects/Water.js';
+import { BufferGeometry, ShaderMaterial, InstancedMesh } from 'three';
+import { Water, WaterOptions } from 'three/examples/jsm/Addons.js';
 //@ts-ignore
 import { Noise } from 'noisejs';
 import { Object3D, PlaneGeometry, SphereGeometry, WebGLRenderer } from 'three';
@@ -25,7 +26,7 @@ function setScene(ref: MutableRefObject<any>) {
     renderer.toneMappingExposure = 2.0;
     ref.current.appendChild(renderer.domElement);
 
-    addPlane(scene, 0);
+    addPlane(scene);
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.update()
@@ -40,107 +41,61 @@ function setScene(ref: MutableRefObject<any>) {
     animate()
 }
 
-export function addPlane(scene: THREE.Scene, zPosition: number) {
-    const geometry = new THREE.PlaneGeometry(100, 100, 100, 100);
+export function addWater(scene: THREE.Scene) {
+
+    var waterGeometry = new THREE.PlaneGeometry(35, 100 * 10, 50, 50);
+    var water = new Water(
+        waterGeometry,
+        {
+            textureWidth: 512,
+            textureHeight: 512,
+            waterNormals: new THREE.TextureLoader().load('waternormals.jpg', function (texture) {
+                texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+            }),
+            alpha: 0.95, // Transparency
+            sunDirection: new THREE.Vector3(),
+            sunColor: 0xffffff,
+            waterColor: 0x001e0f,
+            distortionScale: 2,
+        },
+    );
+
+    water.rotation.x = -Math.PI / 2;
+    water.position.z -= 350;
+    water.position.y -= 2.2
+    water.name = 'waterMesh'
+    scene.add(water);
+
+
+
+}
+
+export function addPlane(scene: THREE.Scene) {
+
+    const geometry = new THREE.BoxGeometry(100, 50, 100, 25, 25, 25,);
     const texture = new THREE.TextureLoader().load('/grass.jpg')
-    const material = new THREE.MeshBasicMaterial({  map:texture, side: THREE.DoubleSide})
+    const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide })
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(5,5)
-    const planeMesh = new THREE.Mesh(geometry, material);
-    planeMesh.rotation.x = Math.PI / 2;
-    planeMesh.position.z = zPosition;
-    planeMesh.rotation.z = Math.PI / 2;
-    const points = planeMesh.geometry.attributes.position.array;
-
-
-    const uniforms = {
-        time: { value: 0 },
+    texture.repeat.set(5, 5)
+    const planeMesh = new THREE.InstancedMesh(geometry, material, 10);
+    const dummy = new THREE.Object3D();
+    const offset = 100;
+    for (var i = 0; i < planeMesh.count; i++) {
+        let zOffset = -offset * (i - 1)
+        dummy.position.set(0, 0, zOffset)
+        dummy.rotation.set(Math.PI / 2, 0, Math.PI / 2)
+        dummy.updateMatrix();
+        planeMesh.setMatrixAt(i, dummy.matrix)
     }
+    updatePoints(planeMesh.geometry.attributes.position.array, planeMesh)
+    planeMesh.instanceMatrix.needsUpdate = true;
+    scene.add(planeMesh)
+}
 
-    const leaf = `
-  varying vec2 vUv;
-  uniform float time;
-  
-	void main() {
-
-    vUv = uv;
-    
-    // VERTEX POSITION
-    
-    vec4 mvPosition = vec4( position, 1.0 );
-    #ifdef USE_INSTANCING
-    	mvPosition = instanceMatrix * mvPosition;
-    #endif
-    
-    // DISPLACEMENT
-    
-    // here the displacement is made stronger on the blades tips.
-    float dispPower = 1.0 - cos( uv.y * 3.1416 / 2.0 );
-    
-    float displacement = sin( mvPosition.y + time * 10.0 ) * ( 0.1 * dispPower );
-    mvPosition.y += displacement;
-    
-    //
-    
-    vec4 modelViewPosition = modelViewMatrix * mvPosition;
-    gl_Position = projectionMatrix * modelViewPosition;
-
-	}
-`;
-
-    const leaf2 = `
-  varying vec2 vUv;
-  
-  void main() {
-  	vec3 baseColor = vec3( 0.41, 1.0, 0.5 );
-    float clarity = ( vUv.y * 0.5 ) + 0.5;
-    gl_FragColor = vec4( baseColor * clarity, 1 );
-  }
-`;
-
-    const grassMaterial = new THREE.ShaderMaterial({
-        vertexShader: leaf,
-        fragmentShader: leaf2,
-        uniforms: uniforms,
-        side: THREE.DoubleSide,
-    })
-
-    const bloomFragmentShader = ` 
-			uniform sampler2D baseTexture;
-			uniform sampler2D bloomTexture;
-
-			varying vec2 vUv;
-
-			void main() {
-
-				gl_FragColor = ( texture2D( baseTexture, vUv ) + vec4( 1.0 ) * texture2D( bloomTexture, vUv ) );
-
-            }`
-
-    const bloomVertexShader = ` 
-		varying vec2 vUv;
-
-			void main() {
-
-				vUv = uv;
-
-				gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
-
-			}
-`
-
-
-
-
-
-    const noise = new Noise(Math.random())
-
-
-    const divide = 8;
-
-    const dummy = new Object3D();
-
+function updatePoints(points: THREE.TypedArray, mesh: THREE.InstancedMesh) {
+    const noise = new Noise();
+    let divide = 8;
     for (var i = 0; i < points.length; i += 3) {
         let x = points[i] / divide;
         let y = points[i + 1] / divide;
@@ -160,44 +115,11 @@ export function addPlane(scene: THREE.Scene, zPosition: number) {
         if (y == startingPoint || y == startingPoint + 10) {
             points[i + 2] += 4;
         }
-
-
-
-
     }
+    mesh.instanceMatrix.needsUpdate = true;
 
-    addFlowers(points, scene, planeMesh);
-
-    var waterGeometry = new THREE.PlaneGeometry(100, 100, 200, 200);
-    var water = new Water(
-        waterGeometry,
-        {
-            textureWidth: 512,
-            textureHeight: 512,
-            waterNormals: new THREE.TextureLoader().load('waternormals.jpg', function (texture) {
-                texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-            }),
-            alpha: 0.95, // Transparency
-            sunDirection: new THREE.Vector3(),
-            sunColor: 0xffffff,
-            waterColor: 0x001e0f,
-            distortionScale: 2,
-        }
-    );
-
-    water.rotation.x = -Math.PI / 2;
-    water.position.y -= 3;
-    water.position.z = zPosition;
-
-    water.name = 'waterMesh'
-    scene.add(water);
-
-
-
-    scene.add(planeMesh);
 
 }
-
 
 export function addFlowers(points: THREE.TypedArray, scene: THREE.Scene, parent: THREE.Mesh) {
     for (var i = 0; i < points.length; i += 3) {
@@ -215,4 +137,11 @@ export function addFlowers(points: THREE.TypedArray, scene: THREE.Scene, parent:
         }
 
     }
+}
+
+class CustomWater extends InstancedMesh {
+    //@ts-ignore
+    material: ShaderMaterial;
+    //@ts-ignore
+    constructor(geometry: BufferGeometry, options: WaterOptions, count: count);
 }
