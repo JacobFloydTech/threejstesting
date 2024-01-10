@@ -1,5 +1,5 @@
 "use client"
-import { addBackgroundLandscape, addMiddleGround, addPlane, addText, addWater, animateText, createVideoElement, loadMountainGLB, scaleFragShader, scaleVertexShader, setPositions,  } from './functions';
+import { LoadTree, addBackgroundLandscape, addBoulders, addLogo, addMiddleGround, addPlane, addText, addWater, animateText, createVideoElement, loadMountainGLB, scaleFragShader, scaleVertexShader, setPositions, } from './functions';
 import { MutableRefObject, useEffect, useRef } from "react"
 import * as THREE from 'three'
 import { EffectComposer, OrbitControls, RenderPass, ShaderPass } from "three/examples/jsm/Addons.js";
@@ -20,21 +20,26 @@ function setScene(ref: MutableRefObject<any>) {
     if (!ref.current) { return }
     let velocity = 0;
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 0.1, 10000000);
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
     const renderer = new THREE.WebGLRenderer();
     renderer.setSize(window.innerWidth, window.innerHeight);
     ref.current.appendChild(renderer.domElement);
     let text = "Risos Enterprises LTD"
-    scene.add(new THREE.AmbientLight());
+
     loadMountainGLB(scene)
     addPlane(scene, camera.position);
-
+    addLogo(scene)
     let material: THREE.Material | THREE.Material[] = (scene.getObjectByName('grass') as THREE.InstancedMesh)?.material;
     const water = scene.getObjectByName('waterMesh') as Water;
 
     camera.position.set(0, 15, 100);
     camera.lookAt(0, 15, 50);
-  
+    const light = new THREE.AmbientLight(0xFFFFFF, 4);
+    scene.add(light);
+    addBoulders(scene);
+    LoadTree(scene);
+
+
     const composer = new EffectComposer(renderer);
     const renderPass = new RenderPass(scene, camera);
     composer.addPass(renderPass);
@@ -47,11 +52,11 @@ function setScene(ref: MutableRefObject<any>) {
     const globeEffectPass = new ShaderPass(cameraShader);
     globeEffectPass.renderToScreen = true;
     composer.addPass(globeEffectPass);
- 
+
     function animate() {
-     
-        animateText(-5, -200, camera.position.z, text, scene);
-    
+
+
+
         requestAnimationFrame(animate);
         camera.position.z += velocity
         if (velocity < 0) {
