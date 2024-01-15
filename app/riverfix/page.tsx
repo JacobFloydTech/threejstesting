@@ -1,5 +1,5 @@
 "use client"
-import { LoadTree, addBackgroundLandscape, addBoulders, addLogo, addMiddleGround, addPlane, addText, addWater, animateText, createVideoElement, loadMountainGLB, scaleFragShader, scaleVertexShader, setPositions, } from './functions';
+import { LoadTree, addBackgroundLandscape, addBoulders, addLights, addLogo, addMiddleGround, addPlane, addText, addWater, animateText, createVideoElement, loadMountainGLB, scaleFragShader, scaleInThings, scaleVertexShader, setPositions, } from './functions';
 import { MutableRefObject, useEffect, useRef } from "react"
 import * as THREE from 'three'
 import { EffectComposer, OrbitControls, RenderPass, ShaderPass } from "three/examples/jsm/Addons.js";
@@ -11,7 +11,7 @@ export default function Page() {
     const ref = useRef<any>(null);
     useEffect(() => { setScene(ref) }, [])
     return (
-        <div className="w-full h-screen" ref={ref} />
+        <div className="w-full h-screen fixed" ref={ref} />
 
     )
 }
@@ -34,8 +34,8 @@ function setScene(ref: MutableRefObject<any>) {
 
     camera.position.set(0, 15, 100);
     camera.lookAt(0, 15, 50);
-    const light = new THREE.AmbientLight(0xFFFFFF, 4);
-    scene.add(light);
+
+    addLights(scene)
     addBoulders(scene);
     LoadTree(scene);
 
@@ -54,7 +54,7 @@ function setScene(ref: MutableRefObject<any>) {
     composer.addPass(globeEffectPass);
 
     function animate() {
-
+        scaleInThings(scene, camera.position.z)
 
 
         requestAnimationFrame(animate);

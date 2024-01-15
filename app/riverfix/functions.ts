@@ -323,7 +323,7 @@ export function addBoulders(scene: THREE.Scene) {
         dummy.updateMatrix();
         mesh.setMatrixAt(i, dummy.matrix);
     }  
-
+    mesh.name = 'boulders'
 
     mesh.instanceMatrix.needsUpdate = true;
     scene.add(mesh)
@@ -335,20 +335,15 @@ export function LoadTree(scene: THREE.Scene) {
     const positions: THREE.Vector3[] = Array.from({ length: count }).map(() => new THREE.Vector3(getXPosition(), -5, Math.random() * -1000));
     const dummy = new THREE.Object3D();
     loader.load('tree.glb', ({ scene: { children } }) => { 
-        children.forEach((child, i) => { 
-           
+        children[0].children.forEach((child, i) => { 
+            console.log(child.name);
             const instancedmesh = new THREE.InstancedMesh((child as THREE.Mesh).geometry, (child as THREE.Mesh).material, count);
             for (var i = 0; i < instancedmesh.count; i++) { 
                 dummy.position.copy(positions[i]);
-                if (child.name == 'Icosphere') { 
-                    dummy.position.y += 12.5;
-                    dummy.position.x += 2;
-                    dummy.position.z -= 2;
-                    dummy.scale.set(4, 4, 4);
-                }
                 dummy.updateMatrix();
                 instancedmesh.setMatrixAt(i, dummy.matrix);
             }
+            instancedmesh.name = child.name == 'Cylinder000' ? 'trees' : 'leaves';
             instancedmesh.instanceMatrix.needsUpdate = true;
             scene.add(instancedmesh);
 
@@ -361,7 +356,7 @@ export function LoadTree(scene: THREE.Scene) {
 
 export function loadMountainGLB(scene: THREE.Scene) { 
     const loader = new GLTFLoader();
-    loader.load('/mountains.glb', (gltf) => {
+    loader.load('/mountain.glb', (gltf) => {
        
         console.log(gltf.scene);
       
@@ -377,19 +372,19 @@ export function loadMountainGLB(scene: THREE.Scene) {
 
 function addInstanceMesh(e: THREE.Mesh, scene: THREE.Scene, mirror: boolean) { 
     const texture = new THREE.TextureLoader().load('mountainMaterial.png');
-    const material = new THREE.MeshStandardMaterial({ map:texture, metalness: 0.4})
-    const instancedMesh = new THREE.InstancedMesh(e.geometry, material , 3);
-    instancedMesh.position.y = 55;
-    instancedMesh.position.x = mirror ? -250 : 250;
+    const material = new THREE.MeshStandardMaterial({ map:texture, metalness: 0})
+    const instancedMesh = new THREE.InstancedMesh(e.geometry, material , 4);
+    instancedMesh.position.y = -20;
+    instancedMesh.position.x = mirror ? -350 : 350;
     instancedMesh.rotation.y = mirror ? -Math.PI/2 : Math.PI/2;
-    instancedMesh.scale.set(1, 1, 1);
+    instancedMesh.scale.set(250, 250, 250);
     const dummy = new THREE.Object3D()
     for (var i =0 ; i <instancedMesh.count; i++) { 
         const matrix = new THREE.Matrix4()
         instancedMesh.getMatrixAt(i, matrix);
         dummy.applyMatrix4(matrix)
       
-        dummy.position.x = mirror ? -400*i : 400*i;
+        dummy.position.x = mirror ? -1*i : 1*i;
         dummy.updateMatrix()
         instancedMesh.setMatrixAt(i, dummy.matrix)
     }
@@ -559,3 +554,35 @@ export const scaleFragShader = `
             gl_FragColor = texture2D(tDiffuse, vUv);
         }`
 
+
+
+export function addLights(scene: THREE.Scene) { 
+    const light = new THREE.DirectionalLight(0xffffff, 0.6);
+    light.position.set(0, 30, 70);
+    light.target.position.set(0, 10, -100);
+    const sun = new THREE.DirectionalLight(0xffffff, 0.2);
+    sun.position.set(0, 80, 40);
+    sun.target.position.set(0, 10, -100);
+    scene.add(sun)
+    scene.add(light);
+}
+
+
+export function scaleInThings(scene: THREE.Scene, position: number) { 
+    ["trees", "leaves", "boulders"].map((e) => scene.getObjectByName(e) as THREE.InstancedMesh).filter((e) => e).forEach((e) => { 
+        console.log(e.name);
+        const dummy = new THREE.Object3D()
+        for ( var i = 0; i < e.count; i++) { 
+            const matrix = new THREE.Matrix4()
+            e.getMatrixAt(i, matrix);
+            dummy.position.setFromMatrixPosition(matrix)
+            const end = dummy.position.z+100;
+            const start = end+200;
+            const per = Math.min(Math.max(0, (position-start)/(end-start)),1);
+            dummy.scale.set(per, per, per);
+            dummy.updateMatrix();
+            e.setMatrixAt(i, dummy.matrix);
+        }
+        e.instanceMatrix.needsUpdate = true;
+    })
+}
