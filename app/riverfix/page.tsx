@@ -1,5 +1,5 @@
 "use client"
-import { LoadTree, addBackgroundLandscape, addBoulders, addLights, addLogo, addMiddleGround, addPlane, addText, addWater, animateText, createVideoElement, loadMountainGLB, scaleFragShader, scaleInThings, scaleVertexShader, setPositions, } from './functions';
+import { LoadTree, addBoulders, addLights, addMiddleGround, addPlane, addWater, loadMountainGLB , scaleInThings, setPositions, } from './functions';
 import { MutableRefObject, useEffect, useRef } from "react"
 import * as THREE from 'three'
 import { EffectComposer, OrbitControls, RenderPass, ShaderPass } from "three/examples/jsm/Addons.js";
@@ -41,19 +41,6 @@ async function setScene(ref: MutableRefObject<any>) {
     addDisplayText(scene);
     let mixer = await addWaicorder(scene);
     const waicorder = scene.getObjectByName('Armature003') as THREE.Object3D;
-
-    const composer = new EffectComposer(renderer);
-    const renderPass = new RenderPass(scene, camera);
-    composer.addPass(renderPass);
-    const cameraShader = {
-        uniforms: {
-            tDiffuse: { value: null },
-            aspect: { value: new THREE.Vector2 }
-        }, vertexShader: scaleVertexShader, fragmentShader: scaleFragShader
-    }
-    const globeEffectPass = new ShaderPass(cameraShader);
-    globeEffectPass.renderToScreen = true;
-    composer.addPass(globeEffectPass);
     const clock = new THREE.Clock()
     function animate() {
         scaleInThings(scene, camera.position.z);

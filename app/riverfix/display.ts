@@ -95,6 +95,7 @@ export function addWaicorder(scene :THREE.Scene): Promise<THREE.AnimationMixer |
     })
 }
 
+
 export function handleAnimation(currentZ: number, scene: THREE.Scene) {
     const start = -100;
     const end = -500;
