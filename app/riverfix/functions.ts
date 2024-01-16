@@ -3,12 +3,11 @@ import {  FBXLoader, GLTFLoader, SVGLoader, TextGeometry, Water } from 'three/ex
 import { FontLoader } from 'three/addons/loaders/FontLoader.js';
 //@ts-ignore
 import { Noise } from 'noisejs'
-import { instancedVertexShader, mountainShader, mountainVertex } from './mountaData';
 
 
 export function addWater(scene: THREE.Scene) {
 
-    var waterGeometry = new THREE.PlaneGeometry(35, 100 * 10, 50, 50);
+    var waterGeometry = new THREE.PlaneGeometry(35, 100*10 , 50, 50);
     var water = new Water(
         waterGeometry,
         {
@@ -42,10 +41,9 @@ export function addPlane(scene: THREE.Scene, cameraPosition: THREE.Vector3) {
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
     texture.repeat.set(5, 5)
-    const planeMesh = new THREE.InstancedMesh(geometry, material, 10);
+    const planeMesh = new THREE.InstancedMesh(geometry, material, 20);
     const dummy = new THREE.Object3D();
     const offset = 100;
-    const position = new THREE.Vector3(0, 0, 0);
     for (var i = 0; i < planeMesh.count; i++) {
         let zOffset = -offset * (i - 1)
         dummy.position.set(0, 0, zOffset)
@@ -66,7 +64,7 @@ export function addPlane(scene: THREE.Scene, cameraPosition: THREE.Vector3) {
 }
 
 function addGrass(scene: THREE.Scene, mesh: THREE.InstancedMesh, cameraPosition: THREE.Vector3, main: boolean) { 
-    const count = (mesh.geometry.attributes.position.array.length / 3) * 10;
+    const count = (mesh.geometry.attributes.position.array.length / 3) * 20;
     const geometry = new THREE.BoxGeometry(0.8,1.2,0.8); 
     const boxMesh = new THREE.InstancedMesh(geometry, leavesMaterial, count);
     if (main) boxMesh.name = 'grass'
@@ -108,7 +106,7 @@ export function addMiddleGround(scene: THREE.Scene) {
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
     texture.repeat.set(5, 5)
-    const mesh = new THREE.InstancedMesh(geo, material, 10); 
+    const mesh = new THREE.InstancedMesh(geo, material, 20); 
     mesh.rotation.set(Math.PI / 2, 0, Math.PI); 
     mesh.position.y = -8;
     const dummy = new THREE.Object3D();
@@ -134,13 +132,13 @@ export function addMiddleGround(scene: THREE.Scene) {
 }
 export function addGrassToMiddleGround(points: THREE.TypedArray, scene: THREE.Scene) { 
 
-    const count = (points.length/3) * 10;
+    const count = (points.length/3) * 20;
     const box = new THREE.BoxGeometry(1,1,2.1);
     const mesh = new THREE.InstancedMesh(box, leavesMaterial, count)
     mesh.position.y = -8;
     mesh.rotation.set(Math.PI / 2, 0, Math.PI); 
     const dummy = new THREE.Object3D()
-    for (var instances = 0; instances <= 10; instances ++) { 
+    for (var instances = 0; instances <= 20; instances ++) { 
         for (var i = 0; i < points.length; i++) { 
             const x = points[i] + getRandomArbitrary(-1, 1);
             const y= points[i+1]  + (100*instances) + getRandomArbitrary(-1, 1);
@@ -336,7 +334,7 @@ export function LoadTree(scene: THREE.Scene) {
     const dummy = new THREE.Object3D();
     loader.load('tree.glb', ({ scene: { children } }) => { 
         children[0].children.forEach((child, i) => { 
-            console.log(child.name);
+    
             const instancedmesh = new THREE.InstancedMesh((child as THREE.Mesh).geometry, (child as THREE.Mesh).material, count);
             for (var i = 0; i < instancedmesh.count; i++) { 
                 dummy.position.copy(positions[i]);
@@ -357,8 +355,7 @@ export function LoadTree(scene: THREE.Scene) {
 export function loadMountainGLB(scene: THREE.Scene) { 
     const loader = new GLTFLoader();
     loader.load('/mountain.glb', (gltf) => {
-       
-        console.log(gltf.scene);
+    
       
         gltf.scene.children.forEach((e) => {
             addInstanceMesh(e as THREE.Mesh, scene, false)
@@ -518,15 +515,7 @@ const leavesMaterial = new THREE.ShaderMaterial({
 });
 
 
-// Assuming you have a ShaderMaterial
-var material = new THREE.ShaderMaterial({
-    fragmentShader: mountainShader,
-    vertexShader: instancedVertexShader,
-    uniforms: {
-        snowHeight: { value: 0.7 },  // Adjust the snow height threshold
-        rockHeight: { value: 0.4 }   // Adjust the rock height threshold
-    }
-});
+
 
 
 
@@ -570,7 +559,7 @@ export function addLights(scene: THREE.Scene) {
 
 export function scaleInThings(scene: THREE.Scene, position: number) { 
     ["trees", "leaves", "boulders"].map((e) => scene.getObjectByName(e) as THREE.InstancedMesh).filter((e) => e).forEach((e) => { 
-        console.log(e.name);
+    
         const dummy = new THREE.Object3D()
         for ( var i = 0; i < e.count; i++) { 
             const matrix = new THREE.Matrix4()

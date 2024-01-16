@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import { EffectComposer, OrbitControls, RenderPass, ShaderPass } from "three/examples/jsm/Addons.js";
 import { Water } from 'three/examples/jsm/Addons.js';
 import { RGBELoader } from "three/examples/jsm/Addons.js";
+import { addDisplayText, addLines, addWaicorder, constructBorder, handleAnimation } from './display';
 
 
 export default function Page() {
@@ -16,7 +17,7 @@ export default function Page() {
     )
 }
 
-function setScene(ref: MutableRefObject<any>) {
+async function setScene(ref: MutableRefObject<any>) {
     if (!ref.current) { return }
     let velocity = 0;
     const scene = new THREE.Scene();
@@ -24,21 +25,22 @@ function setScene(ref: MutableRefObject<any>) {
     const renderer = new THREE.WebGLRenderer();
     renderer.setSize(window.innerWidth, window.innerHeight);
     ref.current.appendChild(renderer.domElement);
-    let text = "Risos Enterprises LTD"
-
     loadMountainGLB(scene)
     addPlane(scene, camera.position);
-    addLogo(scene)
     let material: THREE.Material | THREE.Material[] = (scene.getObjectByName('grass') as THREE.InstancedMesh)?.material;
     const water = scene.getObjectByName('waterMesh') as Water;
 
-    camera.position.set(0, 15, 100);
-    camera.lookAt(0, 15, 50);
+    camera.position.set(0, 20, 100);
+    camera.lookAt(0, 20, 50);
 
     addLights(scene)
     addBoulders(scene);
     LoadTree(scene);
-
+    constructBorder(scene)
+    addLines(scene);
+    addDisplayText(scene);
+    let mixer = await addWaicorder(scene);
+    const waicorder = scene.getObjectByName('Armature003') as THREE.Object3D;
 
     const composer = new EffectComposer(renderer);
     const renderPass = new RenderPass(scene, camera);
@@ -52,19 +54,19 @@ function setScene(ref: MutableRefObject<any>) {
     const globeEffectPass = new ShaderPass(cameraShader);
     globeEffectPass.renderToScreen = true;
     composer.addPass(globeEffectPass);
-
+    const clock = new THREE.Clock()
     function animate() {
-        scaleInThings(scene, camera.position.z)
-
-
+        scaleInThings(scene, camera.position.z);
+        handleAnimation(camera.position.z, scene);
+        mixer?.update(clock.getDelta())
         requestAnimationFrame(animate);
         camera.position.z += velocity
         if (velocity < 0) {
             velocity += 0.025;
-        } else if (velocity > 0.1) {
+        } else if (velocity > 0) {
             velocity -= 0.001;
         }
-        if (camera.position.z < -600) {
+        if (camera.position.z < -1200) {
             camera.position.z = 0;
         }
         camera.updateMatrix();
@@ -83,8 +85,9 @@ function setScene(ref: MutableRefObject<any>) {
             water.material.uniforms.time.value += 0.01
 
         }
-
+        if (waicorder) { waicorder.rotation.y += 0.02}
         renderer.render(scene, camera)
+
     }
     function onWindowResize() {
 
