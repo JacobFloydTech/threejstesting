@@ -23,26 +23,44 @@ async function setScene(ref: MutableRefObject<any>) {
     ref.current.appendChild(renderer.domElement);
     camera.position.z = 50;
 
-    let material: THREE.ShaderMaterial = constructBorder(scene)
-    addText(scene)
-    addLight(scene);
-    addLines(scene);
-    let mixer = await addWaicorder(scene)
+    //let material: THREE.ShaderMaterial = constructBorder(scene)
+    addRiverGLB(scene)
+    addLight(scene)
+
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.update()
     const waicorder = scene.getObjectByName('Armature003') as THREE.Object3D;
-    console.log(waicorder)
     const clock = new THREE.Clock();
     function animate() { 
         renderer.render(scene, camera);
         requestAnimationFrame(animate);
         controls.update()
-        mixer?.update(clock.getDelta())
-        material.uniforms.time.value += 0.05;
+        //mixer?.update(clock.getDelta())
+        //material.uniforms.time.value += 0.05;
         if (waicorder) { waicorder.rotation.y += 0.02;}
 
     }
     animate();
+}
+
+function addRiverGLB(scene: THREE.Scene) { 
+    const loader = new GLTFLoader();
+    loader.load('/newLandscape.glb', (obj) =>{ 
+        const child = obj.scene.children[0] as THREE.Mesh;
+        const newMesh = new THREE.Mesh(child.geometry, new THREE.MeshBasicMaterial({side: THREE.DoubleSide}));
+        newMesh.scale.set(20,20,20)
+        console.log(newMesh);
+        scene.add(newMesh)
+        addWater(scene)
+    })
+}
+
+function addWater(scene: THREE.Scene) { 
+    const planeWater = new THREE.PlaneGeometry(40,40);
+    const mesh = new THREE.Mesh(planeWater, new THREE.MeshBasicMaterial({color: "blue", side: THREE.DoubleSide}));
+    mesh.rotation.x = Math.PI/2;
+    mesh.position.y -= 2;
+    scene.add(mesh)
 }
 
 function addLight(scene: THREE.Scene) { 

@@ -13,7 +13,7 @@ export function addDisplayText(scene :THREE.Scene) {
                 size: 0.62
             })
             const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({transparent: true}));
-            mesh.position.set(4, 28, 0);
+            mesh.position.set(-1, 28, 0);
             mesh.name = 'text';
             console.log(mesh);
             scene.add(mesh);
@@ -28,26 +28,40 @@ export function constructBorder(scene: THREE.Scene) {
     const geometry = new THREE.CylinderGeometry(radius, radius, 40);
     const top = new THREE.Mesh(geometry, borderShaderMaterial);
     top.rotation.z = Math.PI/2;
-    top.position.set(5,30,0)
+    top.position.set(0,30,0)
     top.name = 'top'
 
     const bottom = new THREE.Mesh(geometry, borderShaderMaterial);
     bottom.rotation.z = Math.PI/2;
-    bottom.position.set(5,10,0)
+    bottom.position.set(0,10,0)
     bottom.name = 'bottom'
 
     const sideGeometry = new THREE.CylinderGeometry(radius, radius,20)
     const left = new THREE.Mesh(sideGeometry, borderShaderMaterial);
-    left.position.set(-15, 20,0)
+    left.position.set(-20, 20,0)
     left.name ='left'
     const right = new THREE.Mesh(sideGeometry, borderShaderMaterial);
-    right.position.set(25, 20, 0)
+    right.position.set(20, 20, 0)
     right.name = 'right'
 
     scene.add(right)
     scene.add(left)
     scene.add(bottom)
     scene.add(top)
+
+    const instanceMesh = new THREE.InstancedMesh(geometry, borderShaderMaterial, 10);
+    instanceMesh.position.set(0, 20,0)
+    const dummy = new THREE.Object3D()
+    for (var i =0 ; i < instanceMesh.count; i++) { 
+        const matrix = new THREE.Matrix4();
+        instanceMesh.getMatrixAt(i, matrix);
+        dummy.applyMatrix4(matrix);
+        dummy.position.y = 20-i*2;
+        dummy.updateMatrix()
+        instanceMesh.setMatrixAt(i, dummy.matrix)
+    }
+    instanceMesh.instanceMatrix.needsUpdate = true;
+    instanceMesh.name = 'grain'
     return borderShaderMaterial;
 }
 
@@ -57,13 +71,13 @@ export function addLines(scene: THREE.Scene) {
     const line = new THREE.CylinderGeometry(radius,radius, 10)
     const mesh = new THREE.Mesh(line, borderShaderMaterial);
     mesh.rotation.z = Math.PI/2;
-    mesh.position.set(8, 16, 0)
+    mesh.position.set(4, 16, 0)
     scene.add(mesh);
     mesh.name = 'pointLineMesh'
 
     const ring = new THREE.RingGeometry(1, 1.2, 20, 20);
     const ringMesh = new THREE.Mesh(ring, borderShaderMaterial);
-    ringMesh.position.set(2, 16, 0)
+    ringMesh.position.set(-2, 16, 0)
     scene.add(ringMesh)
 
     ringMesh.name = 'ringMesh'
@@ -71,7 +85,7 @@ export function addLines(scene: THREE.Scene) {
     const diagonalLine = new THREE.CylinderGeometry(radius, radius, 1.2);
     const diagonalLineMesh = new THREE.Mesh(diagonalLine, borderShaderMaterial);
     diagonalLineMesh.rotation.z = -Math.PI/5;
-    diagonalLineMesh.position.set(13.6, 16.5, 0)
+    diagonalLineMesh.position.set(9.6, 16.5, 0)
     diagonalLineMesh.name = 'diagonalLineMesh'
     scene.add(diagonalLineMesh)
 }
@@ -88,7 +102,7 @@ export function addWaicorder(scene :THREE.Scene): Promise<THREE.AnimationMixer |
             action.clampWhenFinished = true;
             action.repetitions = 1;
             obj.scene.scale.set(0,0,0); 
-            obj.scene.position.set(5, 10, 0)
+            obj.scene.position.set(-3, 10, 0)
             scene.add(obj.scene)
             resolve(mixer)
         })
@@ -96,44 +110,119 @@ export function addWaicorder(scene :THREE.Scene): Promise<THREE.AnimationMixer |
 }
 
 
+export function addTransparentBackground(scene: THREE.Scene) { 
+    const plane = new THREE.PlaneGeometry(40, 20,1,1);
+    const mesh = new THREE.Mesh(plane, gridMaterial)
+    mesh.position.set(0, 20, 0);
+    mesh.name = 'planeBackground'
+    scene.add(mesh)
+}
+
 export function handleAnimation(currentZ: number, scene: THREE.Scene) {
-    const start = -100;
-    const end = -500;
-    const startFade = -700;
-    const endFade = -900; 
-    ['waicorder', 'text', 'top', 'left', 'right', 'bottom', 'pointLineMesh', 'ringMesh', 'diagonalLineMesh'].map((e) => scene.getObjectByName(e) as THREE.Mesh).filter((x) => x).forEach((e) => {
+    const start = -50;
+    const end = -100;
+    const startFade = -600;
+    const endFade = -800; 
+    ['planeBackground','waicorder', 'text', 'top', 'left', 'right', 'bottom', 'pointLineMesh', 'ringMesh', 'diagonalLineMesh'].map((e) => scene.getObjectByName(e) as THREE.Mesh).filter((x) => x).forEach((e) => {
         if (currentZ > start) { e.position.z = currentZ-50; return changeOpacity(e, 0)};
-        if (currentZ < end && currentZ > startFade) { e.position.z = currentZ-20; return changeOpacity(e, 1)}
+        if (currentZ < end && currentZ > startFade) { e.position.z = currentZ-25; return changeOpacity(e, 1)}
         if (currentZ > end) { 
             const per = (currentZ-start)/(end-start);
-            const offset = (1-per)*50+20;
+            const offset = (1-per)*50+25;
             e.position.z = currentZ-offset;
             changeOpacity(e, per)
         } else { 
             const per = (currentZ-startFade)/(endFade-startFade);
-            const offset = per*50+20;
+            const offset = per*50+25;
             e.position.z = currentZ-offset;
             changeOpacity(e, 1-per);
         }
     })
 
-    const waicorder = scene.getObjectByName('waicorder') as THREE.Group;
-    if (!waicorder) return
-    if (currentZ > start) { return waicorder.scale.set(0,0,0)}
-    if (currentZ < end && currentZ > startFade) { return waicorder.scale.set(50,50,50)}
-    if (currentZ > end) { 
-        const per = (currentZ-start)/(end-start);
-        const scale = 50*per;
-        waicorder.scale.set(scale, scale, scale)
-    } else { 
-        const per = (currentZ-startFade)/(endFade-startFade);
-        const scale = 50*(1-per);
-        waicorder.scale.set(scale,scale,scale)
+    handleWaicorder();
+    handleGrainMesh(scene, currentZ);
+    handlePlane(scene);
+    function handleWaicorder() { 
+        const baseScale = 45;
+        const waicorder = scene.getObjectByName('waicorder') as THREE.Group;
+        waicorder.position.z += 2;
+        if (!waicorder) return
+        if (currentZ > start) { return waicorder.scale.set(0,0,0)}
+        if (currentZ < end && currentZ > startFade) { return waicorder.scale.set(baseScale,baseScale,baseScale)}
+        if (currentZ > end) { 
+            const per = (currentZ-start)/(end-start);
+            const scale = baseScale*per;
+            waicorder.scale.set(scale, scale, scale)
+        } else { 
+            const per = (currentZ-startFade)/(endFade-startFade);
+            const scale = baseScale*(1-per);
+            waicorder.scale.set(scale,scale,scale)
+        }
     }
+}
+
+function handleGrainMesh(scene: THREE.Scene, position: number) { 
+    const mesh = scene.getObjectByName('grain') as THREE.InstancedMesh;
+    const background = scene.getObjectByName('planeBackground') as THREE.Mesh;
+    if (!mesh || !background) return
+    const dummy = new THREE.Object3D();
+    for (var i =0 ; i < mesh.count;i++) { 
+        const matrix = new THREE.Matrix4();
+        mesh.setMatrixAt(i, matrix);
+        dummy.applyMatrix4(matrix);
+        dummy.position.z = position-20
+        dummy.position.y = 20-i*20/10;
+        dummy.rotation.z = Math.PI/2;
+        dummy.updateMatrix();
+        mesh.setMatrixAt(i, dummy.matrix);
+    }
+    console.log(position-20);
+    mesh.instanceMatrix.needsUpdate = true;
+}
+export function addGrainToBackground(scene: THREE.Scene) { 
+    const geometry = new THREE.CylinderGeometry(0.2, 0.2,40);
+    const material = new THREE.MeshStandardMaterial({color: "blue"});
+    const baseY = 20;
+    const mesh  =new THREE.InstancedMesh(geometry, material, 10);
+    mesh.position.set(0,baseY,0)
+    const distanceJump = 20/mesh.count;
+    mesh.name = 'grain'
+    const dummy = new THREE.Object3D()
+    for (var i = 0; i < mesh.count; i++) { 
+        const matrix = new THREE.Matrix4()
+        mesh.getMatrixAt(i, matrix);
+        dummy.applyMatrix4(matrix);
+        dummy.position.y = baseY-i*distanceJump;
+        dummy.rotation.z = Math.PI/2;
+        dummy.updateMatrix()
+        mesh.setMatrixAt(i, dummy.matrix)
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+    scene.add(mesh)
 
 }
 
-function changeOpacity(mesh: THREE.Mesh, opacity: number) { 
+function handlePlane(scene: THREE.Scene) { 
+    const plane = scene.getObjectByName('planeBackground') as THREE.Mesh;
+    if (!plane) { return}
+    plane.position.z -= 0.4;
+    let material: THREE.Material | THREE.Material[] = plane.material;
+    if (!Array.isArray(material)) { 
+        material = [material]
+    }
+    material.forEach((m) => { 
+        m.opacity = m.opacity*0.8;
+        if (m instanceof THREE.ShaderMaterial) { 
+            try { 
+                (m as THREE.ShaderMaterial).uniforms.opacity.value *= 0.5;
+            } catch (e) {}
+
+        }
+    })
+    
+}
+
+function changeOpacity(mesh: THREE.Mesh, opacity: number,) { 
     let material: THREE.Material | THREE.Material[] = mesh.material;
     if (!Array.isArray(material)) { 
         material = [material]
@@ -141,7 +230,10 @@ function changeOpacity(mesh: THREE.Mesh, opacity: number) {
     material.filter((m ) => m).forEach(m => {
         m.opacity = opacity;
         if (m instanceof THREE.ShaderMaterial) { 
-            (m as THREE.ShaderMaterial).uniforms.opacity.value = opacity;
+            try { 
+                (m as THREE.ShaderMaterial).uniforms.opacity.value = opacity;
+            } catch (e) {}
+
         }
     });
 }
@@ -193,3 +285,39 @@ const borderShaderMaterial = new THREE.ShaderMaterial({
     
 })
 
+
+
+const gridFragment = `
+precision highp float;
+varying vec2 vUv;
+uniform float opacity;
+void main()
+{
+
+    // Adjust the spacing between lines
+    float lineSpacing = 0.02;
+
+    // Calculate the index of the line
+    float lineIndex = floor(vUv.y / lineSpacing);
+
+    // Use modulo to create repeating pattern
+    float modResult = mod(lineIndex, 2.0);
+
+    // Set color based on the repeating pattern
+    if (modResult < 1.0) {
+        gl_FragColor = vec4(0.,1.,1., opacity); // Color for lines
+    } else {
+        gl_FragColor = vec4(0.,.7,.7,opacity); // Color for gaps
+    }
+}
+`;
+
+const gridMaterial = new THREE.ShaderMaterial({
+    uniforms: {
+        opacity: { value :0}
+    },
+    vertexShader: vertexShader,
+    fragmentShader: gridFragment,
+    transparent: true,
+    opacity: 0.7,
+});
