@@ -3,6 +3,8 @@ import {  FBXLoader, GLTFLoader, SVGLoader, TextGeometry, Water } from 'three/ex
 import { FontLoader } from 'three/addons/loaders/FontLoader.js';
 //@ts-ignore
 import { Noise } from 'noisejs'
+import { addNewGrass } from './display';
+import { loadDisplay } from './display';
 
 
 export function addWater(scene: THREE.Scene) {
@@ -34,124 +36,40 @@ export function addWater(scene: THREE.Scene) {
 
 }
 
-export function addPlane(scene: THREE.Scene, cameraPosition: THREE.Vector3) {
-    const geometry = new THREE.PlaneGeometry(100, 50, 50, 50,);
-    const texture = new THREE.TextureLoader().load('/grass.jpg')
-    const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide })
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(5, 5)
-    const planeMesh = new THREE.InstancedMesh(geometry, material, 20);
-    const dummy = new THREE.Object3D();
-    const offset = 100;
-    for (var i = 0; i < planeMesh.count; i++) {
-        let zOffset = -offset * (i - 1)
-        dummy.position.set(0, 0, zOffset)
-        dummy.rotation.set(Math.PI / 2, 0, Math.PI / 2)
-        dummy.updateMatrix();
-        planeMesh.setMatrixAt(i, dummy.matrix)
-    }
-    updatePoints(planeMesh.geometry.attributes.position.array, planeMesh)
-    planeMesh.instanceMatrix.needsUpdate = true;
-    planeMesh.name = 'plane'
-    scene.add(planeMesh)
-    addWater(scene);
-    addGrass(scene, planeMesh, cameraPosition, true)
-    addMiddleGround(scene);
-    
 
 
-}
-
-function addGrass(scene: THREE.Scene, mesh: THREE.InstancedMesh, cameraPosition: THREE.Vector3, main: boolean) { 
-    const count = (mesh.geometry.attributes.position.array.length / 3) * 20;
-    const geometry = new THREE.ConeGeometry(1,1.5,15)
-    const boxMesh = new THREE.InstancedMesh(geometry, leavesMaterial, count);
-    if (main) boxMesh.name = 'grass'
-    boxMesh.rotation.set(Math.PI / 2, 0, Math.PI / 2)
-    setPositions(scene, boxMesh, mesh.geometry.attributes.position.array, cameraPosition);
-
-}
-
-function updatePoints(points: THREE.TypedArray, mesh: THREE.InstancedMesh) {
-    const noise = new Noise();
-    let divide = 8;
-    for (var i = 0; i < points.length; i += 3) {
-        let x = points[i] / divide;
-        let y = points[i + 1] / divide;
-        let z = points[i + 2] / divide;
-        points[i + 2] = noise.perlin3(x, y, z) * 4;
-        x *= divide;
-        y *= divide;
-        const percentageToCenter = (1 - Math.abs(x) / 25);
-
-        const startingPoint = -8 + (percentageToCenter * 10);
-
-        if (y > startingPoint && y < startingPoint + 15) {
-            points[i + 2] += 100;
-
-        }
-
-        if (y == startingPoint || y == startingPoint + 15) {
-            points[i + 2] += 4;
-        }
-    }
-    mesh.instanceMatrix.needsUpdate = true;
-}   
-
-export function addMiddleGround(scene: THREE.Scene) { 
-    const loader = new GLTFLoader()
-    loader.load('/newLandscape.glb', (obj) => { 
-        const texture = new THREE.TextureLoader().load('/grass.jpg');
-        const material = new THREE.MeshBasicMaterial({map: texture, side: THREE.DoubleSide})
-        const child = obj.scene.children[0] as THREE.Mesh;
-        const scale = 100;
-        const instancedMesh = new THREE.InstancedMesh(child.geometry, material, 4);
-        const dummy = new THREE.Object3D();
-        for (var i = 0; i < instancedMesh.count; i++) { 
-            dummy.rotation.y = Math.PI/2;
-            dummy.position.z = -200*i-1;
-            dummy.scale.set(scale,scale,scale)
-            dummy.updateMatrix();
-            instancedMesh.setMatrixAt(i, dummy.matrix);
-        }
-        instancedMesh.instanceMatrix.needsUpdate = true;
-        instancedMesh.name = 'middle'
-        scene.add(instancedMesh)
-        for (var i = 0; i < 4; i++) { 
-            addBoulders(scene, -200*i)
-            addGrassGLB(scene, -200*i);
-        }
+export async function addMiddleGround(scene: THREE.Scene) { 
+    return new Promise<void>((resolve, reject) => { 
+        const loader = new GLTFLoader()
+        loader.load('/newLandscape.glb', (obj) => { 
+            const texture = new THREE.TextureLoader().load('/grass.jpg');
+            const material = new THREE.MeshBasicMaterial({map: texture, side: THREE.DoubleSide})
+            const child = obj.scene.children[0] as THREE.Mesh;
+            const scale = 100;
+            const instancedMesh = new THREE.InstancedMesh(child.geometry, material, 4);
+            const dummy = new THREE.Object3D();
+            for (var i = 0; i < instancedMesh.count; i++) { 
+                dummy.rotation.y = Math.PI/2;
+                dummy.position.z = -200*i-1;
+                dummy.scale.set(scale,scale,scale)
+                dummy.updateMatrix();
+                instancedMesh.setMatrixAt(i, dummy.matrix);
+            }
+            instancedMesh.instanceMatrix.needsUpdate = true;
+            instancedMesh.name = 'middle'
+            scene.add(instancedMesh)
+            for (var i = 0; i < 4; i++) { 
+                addBoulders(scene, -200*i)
+                addNewGrass(scene, 200*i)
+            }
+            loadDisplay(scene)
+            
+            resolve();
+        })
+        
     })
     
 }
-
-export function addGrassToMiddleGround(points: THREE.TypedArray, scene: THREE.Scene) { 
-    
-    const count = (points.length/3) * 20;
-    const box = new THREE.ConeGeometry(1,1.5,15)
-    const mesh = new THREE.InstancedMesh(box, leavesMaterial, count)
-    mesh.position.y = -8;
-    mesh.rotation.set(Math.PI / 2, 0, Math.PI); 
-    const dummy = new THREE.Object3D()
-    for (var instances = 0; instances <= 20; instances ++) { 
-        for (var i = 0; i < points.length; i++) { 
-            const x = points[i] + getRandomArbitrary(-1, 1);
-            const y= points[i+1]  + (100*instances) + getRandomArbitrary(0, 0.5);
-            const z = points[i+2];
-            dummy.position.set(x, y, z);
-            dummy.rotation.x = -Math.PI/2;
-
-            dummy.scale.set(getRandomArbitrary(1,4),getRandomArbitrary(1,4),getRandomArbitrary(1,4))
-            dummy.updateMatrix();
-            mesh.setMatrixAt(i / 3 + (instances * (points.length / 3)), dummy.matrix);
-        }
-    }
-    mesh.instanceMatrix.needsUpdate = true;
-    scene.add(mesh)
-
-}
-
 
 export function setPositions(scene: THREE.Scene, mesh: THREE.InstancedMesh, points: THREE.TypedArray, cameraPosition: THREE.Vector3) { 
     const dummy = new THREE.Object3D();
@@ -245,19 +163,23 @@ export function LoadTree(scene: THREE.Scene) {
 
 
 
-export function loadMountainGLB(scene: THREE.Scene) { 
-    const loader = new GLTFLoader();
-    loader.load('/mountain.glb', (gltf) => {
+export async function loadMountainGLB(scene: THREE.Scene) { 
+    return new Promise<void>((resolve, reject) => { 
+        const loader = new GLTFLoader();
+        loader.load('/mountain.glb', (gltf) => {
+        
+          
+            gltf.scene.children.forEach((e) => {
+                addInstanceMesh(e as THREE.Mesh, scene, false)
+            })
+            gltf.scene.children.forEach((e) => {
+                addInstanceMesh(e as THREE.Mesh, scene, true)
+            })
+            resolve();
     
-      
-        gltf.scene.children.forEach((e) => {
-            addInstanceMesh(e as THREE.Mesh, scene, false)
         })
-        gltf.scene.children.forEach((e) => {
-            addInstanceMesh(e as THREE.Mesh, scene, true)
-        })
-
     })
+
 }
 
 function addInstanceMesh(e: THREE.Mesh, scene: THREE.Scene, mirror: boolean) { 
@@ -298,7 +220,7 @@ export function addGrassGLB(scene: THREE.Scene, offset: number) {
     let index =0 ;
     loader.load('smallgrass.glb', (obj ) => { 
         let meshes = obj.scene.children[0].children[0].children[0].children.map((e) => e.children[0] as THREE.Mesh).map((e) => new THREE.InstancedMesh(e.geometry, e.material, count));
-        meshes.forEach((m) => {m.rotation.y = Math.PI/2; })
+        meshes.forEach((m) => {m.rotation.y = Math.PI/2; m.renderOrder = 1;})
         let points = planeMesh.geometry.attributes.position.array.map((e) => e*100);
         const dummy = new THREE.Object3D()
         while (index <= count) { 
