@@ -186,7 +186,7 @@ export function handleAnimation(currentZ: number, scene: THREE.Scene) {
     const end = -150;
     const startFade = -700;
     const endFade = -1000; 
-    const closestDistance = 20;
+    const closestDistance = window.outerWidth >= 1366 ? 20 : 40;
     ['bottomRing', 'topRing','planeBackground','waicorder', 'text', 'top', 'left', 'right', 'bottom', 'pointLineMesh', 'ringMesh', 'diagonalLineMesh']
         .map((e) => scene.getObjectByName(e) as THREE.Mesh)
         .filter((x) => x)
@@ -363,7 +363,7 @@ const fragmentShader = `
         gl_FragColor = vec4(0.,1.0,1.0, opacity);
     }
 `
-const borderShaderMaterial = new THREE.ShaderMaterial({
+export const borderShaderMaterial = new THREE.ShaderMaterial({
     uniforms: { 
         opacity: { value: 0}
     },
@@ -401,7 +401,7 @@ void main()
 }
 `;
 
-const gridMaterial = new THREE.ShaderMaterial({
+export const gridMaterial = new THREE.ShaderMaterial({
     uniforms: {
         opacity: { value :0},
         time: {value: 0}
@@ -418,6 +418,7 @@ export function loadDisplay(scene: THREE.Scene) {
     addLines(scene)
     addTransparentBackground(scene)
     addDisplayText(scene)
+    addDetailBehindWaicorder(scene)
 }
 
 export async function loadHDR(scene: THREE.Scene, renderer: THREE.WebGLRenderer) { 

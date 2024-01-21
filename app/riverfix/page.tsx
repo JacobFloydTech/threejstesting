@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import { Water } from 'three/examples/jsm/Addons.js';
 import { addDetailBehindWaicorder, addWaicorder,  animateRings,  changeTImeValue, handleAnimation, loadHDR } from './display';
 import Loading from './loading';
+import { addWaicorderMobile } from './displayMobile';
 
 
 export default function Page() {
@@ -39,7 +40,7 @@ async function setScene(ref: MutableRefObject<any>, setLoading: Function) {
         loadHDR(scene, renderer)
     ])
     setLoading(false)
-    addDetailBehindWaicorder(scene)
+
     addWater(scene)
     scene.fog = new THREE.Fog( 0xcccccc, 4,600 );
     const water = scene.getObjectByName('waterMesh') as Water;
@@ -49,7 +50,7 @@ async function setScene(ref: MutableRefObject<any>, setLoading: Function) {
     addLights(scene)
     
     LoadTree(scene)
-    let mixer = await addWaicorder(scene);
+    let mixer = await (window.outerWidth >= 1366 ? addWaicorder(scene) :addWaicorderMobile(scene) )
     const waicorder = scene.getObjectByName('Armature003') as THREE.Object3D;
     const clock = new THREE.Clock();
     function animate() {

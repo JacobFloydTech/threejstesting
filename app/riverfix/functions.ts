@@ -5,6 +5,7 @@ import { FontLoader } from 'three/addons/loaders/FontLoader.js';
 import { Noise } from 'noisejs'
 import { addNewGrass } from './display';
 import { loadDisplay } from './display';
+import { loadDisplayMobile } from './displayMobile';
 
 
 export function addWater(scene: THREE.Scene) {
@@ -60,7 +61,7 @@ export async function addMiddleGround(scene: THREE.Scene) {
             scene.add(instancedMesh)
             addBoulders(scene)
             addNewGrass(scene)
-            loadDisplay(scene)
+            window.outerWidth >= 1366 ? loadDisplay(scene) : loadDisplayMobile(scene)
             
             resolve();
         })
@@ -143,7 +144,7 @@ export function addBoulders(scene: THREE.Scene) {
 export function LoadTree(scene: THREE.Scene) {
     const loader = new GLTFLoader();
     const count = 60;
-    const positions: THREE.Vector3[] = Array.from({ length: count }).map(() => new THREE.Vector3(getXPosition(), -5, Math.random() * -1000));
+    const positions: THREE.Vector3[] = Array.from({ length: count }).map(() => new THREE.Vector3(getXPosition(), getRandomArbitrary(0, -2), Math.random() * -1000));
     const dummy = new THREE.Object3D();
     
     loader.load('tree.glb', ({ scene: { children } }) => { 
@@ -255,10 +256,10 @@ export function addGrassGLB(scene: THREE.Scene, offset: number) {
 
 
 export function addLights(scene: THREE.Scene) { 
-    const light = new THREE.DirectionalLight(0xffffff, 0.4);
+    const light = new THREE.DirectionalLight(0xffffff, 0.8);
     light.position.set(0, 30, 70);
     light.target.position.set(0, 10, -100);
-    const sun = new THREE.DirectionalLight(0xe8f8ff, 1.5);
+    const sun = new THREE.DirectionalLight(0xe8f8ff, 1.2);
     sun.position.set(60, 200, -300);
     sun.name = 'sun'
     sun.lookAt(0, 20, -10);
