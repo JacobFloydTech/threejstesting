@@ -24,7 +24,7 @@ function setScene(ref: MutableRefObject<any>) {
     renderer.toneMappingExposure = 1.5;
     renderer.setSize(window.innerWidth, window.innerHeight);
     ref.current.appendChild(renderer.domElement);
-    camera.position.set(0, 0, -50)
+    camera.position.set(25, 25, -200)
 
 
     const controls = new OrbitControls(camera, renderer.domElement);

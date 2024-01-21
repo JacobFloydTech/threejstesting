@@ -1,80 +1,78 @@
 "use client"
-import { LoadTree, addLights, addMiddleGround, addWater, loadMountainGLB , scaleInThings, } from './functions';
-import { MutableRefObject, useEffect, useRef } from "react"
+import { LoadTree, addLights, addMiddleGround, addWater, changeSunPosition, loadMountainGLB , scaleInThings, } from './functions';
+import { MutableRefObject, useEffect, useRef, useState } from "react"
 import * as THREE from 'three'
 import { Water } from 'three/examples/jsm/Addons.js';
-import {  addWaicorder, changeTImeValue, handleAnimation } from './display';
+import { addDetailBehindWaicorder, addWaicorder,  animateRings,  changeTImeValue, handleAnimation, loadHDR } from './display';
+import Loading from './loading';
 
 
 export default function Page() {
     const ref = useRef<any>(null);
-    useEffect(() => { setScene(ref) }, [])
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => { setScene(ref, setLoading) }, [])
     return (
-        <div className="w-full h-screen fixed" ref={ref} />
+        <>
+            <div className={"w-full h-screen bg-black" + (loading ? " hidden" : ' fixed')} ref={ref} />
+            {loading && <Loading/>}
+        </>
 
     )
 }
 
 
 
-async function setScene(ref: MutableRefObject<any>) {
+
+async function setScene(ref: MutableRefObject<any>, setLoading: Function) {
     if (!ref.current) { return }
     let velocity = -0.05;
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 300);
     const renderer = new THREE.WebGLRenderer();
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.sortObjects = false;
     ref.current.appendChild(renderer.domElement);
     await Promise.all([
         loadMountainGLB(scene),
-        addMiddleGround(scene)
+        addMiddleGround(scene),
+        loadHDR(scene, renderer)
     ])
+    setLoading(false)
+    addDetailBehindWaicorder(scene)
     addWater(scene)
-    let material: THREE.Material | THREE.Material[] = (scene.getObjectByName('grass') as THREE.InstancedMesh)?.material;
+    scene.fog = new THREE.Fog( 0xcccccc, 4,600 );
     const water = scene.getObjectByName('waterMesh') as Water;
 
-    camera.position.set(0, 20, 100);
-    camera.lookAt(0, 20, 50);
+    camera.position.set(0, 30, 100);
+    camera.lookAt(0, 30, 50);
     addLights(scene)
-    LoadTree(scene)
     
+    LoadTree(scene)
     let mixer = await addWaicorder(scene);
     const waicorder = scene.getObjectByName('Armature003') as THREE.Object3D;
     const clock = new THREE.Clock();
-    const grass = scene.getObjectByName('grass') as THREE.Mesh
     function animate() {
+        const scaleValue = 0.7+0.5* Math.abs(Math.sin(Date.now() * 0.0005));
+        animateRings(scene, scaleValue)
         changeTImeValue(scene, clock.getDelta());
         scaleInThings(scene, camera.position.z);
         handleAnimation(camera.position.z, scene);
-        mixer?.update(clock.getDelta())
+        changeSunPosition(scene, camera.position.z);
+        mixer?.update(clock.getDelta());
         requestAnimationFrame(animate);
         camera.position.z += velocity
         if (velocity < -0.05) { 
             velocity += 0.01;
         }
 
-        if (camera.position.z < -1200) {
+        if (camera.position.z < -950) {
             camera.position.z = 0;
         }
         camera.updateMatrix();
         camera.updateProjectionMatrix();
-
-        if (material) {
-            if (!Array.isArray(material)) {
-                material = [material]
-            }
-            material.forEach((x) => {
-                (x as THREE.ShaderMaterial).uniforms.time.value += 0.01;
-                x.needsUpdate = true;
-            })
-        }
-        if (water) {
-            water.material.uniforms.time.value += 0.01
-
-        }
+        if (water) { water.material.uniforms.time.value += 0.01}
         if (waicorder) { waicorder.rotation.y += 0.02}
-        if (grass) { grass.rotation.z += 0.03;}
         renderer.render(scene, camera)
 
     }

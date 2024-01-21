@@ -14,6 +14,7 @@ export default function Page() {
     )
 }
 
+
 async function setScene(ref: MutableRefObject<any>) { 
     if (!ref.current) { return}
     const scene = new THREE.Scene();
@@ -22,10 +23,7 @@ async function setScene(ref: MutableRefObject<any>) {
     renderer.setSize(window.innerWidth, window.innerHeight);
     ref.current.appendChild(renderer.domElement);
     camera.position.z = 50;
-
-    //let material: THREE.ShaderMaterial = constructBorder(scene)
-    addRiverGLB(scene)
-    addLight(scene)
+    const mixer = await addWaicorder(scene);
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.update()
@@ -35,7 +33,7 @@ async function setScene(ref: MutableRefObject<any>) {
         renderer.render(scene, camera);
         requestAnimationFrame(animate);
         controls.update()
-        //mixer?.update(clock.getDelta())
+        mixer?.update(clock.getDelta())
         //material.uniforms.time.value += 0.05;
         if (waicorder) { waicorder.rotation.y += 0.02;}
 
