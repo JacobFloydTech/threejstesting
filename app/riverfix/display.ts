@@ -92,6 +92,11 @@ export function addLines(scene: THREE.Scene) {
     diagonalLineMesh.name = 'diagonalLineMesh'
     diagonalLineMesh.renderOrder = 10;
     mesh.material.blending = THREE.NormalBlending;
+    const light = new THREE.DirectionalLight(	0x0FFFF, 12);
+    light.position.set(0, 20, 0);
+    light.name = 'blueLight';
+
+    scene.add(light);
 
     scene.add(ringMesh)
     scene.add(mesh);
@@ -116,7 +121,7 @@ export function addNewGrass(scene: THREE.Scene) {
                 for (var i = 0;  i < points.length; i+=3) { 
                     if (Math.random() > 0.99) { 
                         const offset = instances*200;
-                        dummy.position.set(points[i]+offset, points[i+1], points[i+2]);
+                        dummy.position.set(points[i]+offset, points[i+1]-4, points[i+2]);
                         dummy.scale.set(50,50,50)
                         dummy.rotation.x = Math.PI/2;
                         dummy.updateMatrix();
@@ -209,6 +214,18 @@ export function handleAnimation(currentZ: number, scene: THREE.Scene) {
     handleWaicorder();
     handleGrainMesh(scene, currentZ);
     handlePlane(scene);
+    handleLight();
+    function handleLight() { 
+        const light = scene.getObjectByName('blueLight') as THREE.Light;
+        let scale = 4;
+        if (!light) return
+        light.position.z = currentZ -100;
+        if (currentZ > start) { light.intensity = 0}
+        if (currentZ < end && currentZ > startFade) {light.intensity = scale}
+        if (currentZ > end) { light.intensity = (currentZ-start)/(end-start)*scale}
+        else { let per = (currentZ-startFade)/(endFade-startFade)*scale; light.intensity = scale-per}
+        
+    }
     function handleWaicorder() { 
         const baseScale = 45;
         const waicorder = scene.getObjectByName('waicorder') as THREE.Group;
@@ -413,6 +430,8 @@ export const gridMaterial = new THREE.ShaderMaterial({
 });
 
 
+
+
 export function loadDisplay(scene: THREE.Scene) { 
     constructBorder(scene);
     addLines(scene)
@@ -432,3 +451,36 @@ export async function loadHDR(scene: THREE.Scene, renderer: THREE.WebGLRenderer)
     })
 
 }
+
+
+
+export const depthShader = {
+    uniforms: {
+        tDiffuse: { value: null },
+        aspect: { value: new THREE.Vector2(1, 1) },
+        near: { value: 1 },
+        far: { value: 150 },
+    },
+    vertexShader: `
+        varying vec2 vUv;
+        void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    `,
+    fragmentShader: `
+        varying vec2 vUv;
+        uniform sampler2D tDiffuse;
+        uniform float near;
+        uniform float far;
+        uniform vec2 aspect;
+
+        void main() {
+            float depth = texture2D(tDiffuse, vUv).r;
+            float linearDepth = 1.0 / (1.0 + (far / (far - near) - 1.0) * (1.0 - depth));
+            float depthValue = (linearDepth - near) / (far - near);
+
+            gl_FragColor = vec4(vec3(depthValue), 1.0);
+        }
+    `,
+};
