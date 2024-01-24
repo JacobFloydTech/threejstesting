@@ -2,6 +2,8 @@
 import { useRef, useEffect, MutableRefObject } from "react";
 import * as THREE from 'three'
 import { ImprovedNoise } from "three/examples/jsm/Addons.js";
+//@ts-ignore
+import {Noise} from 'noisejs'
 import { FontLoader, GLTFLoader, OrbitControls, TextGeometry } from "three/examples/jsm/Addons.js";
 const radius = 0.2
 
@@ -23,25 +25,46 @@ async function setScene(ref: MutableRefObject<any>) {
     const renderer = new THREE.WebGLRenderer();
     renderer.setSize(window.innerWidth, window.innerHeight);
     ref.current.appendChild(renderer.domElement);
-    camera.position.z = 50
-    addCloud(scene)
+    camera.position.z = 50;
+    camera.position.y = 10;
+    const light = new THREE.AmbientLight(undefined, 2);
+    scene.add(light)
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.update()
-    //let mixer = await addWaicorder(scene)
-    const waicorder = scene.getObjectByName('Armature003') as THREE.Object3D;
+    const plane = new THREE.PlaneGeometry(100,100,100,100);
+    const mesh = new THREE.Mesh(plane, new THREE.MeshStandardMaterial({side: THREE.DoubleSide, roughness:0, metalness: 1}));
+    mesh.rotation.x = Math.PI/2;
+    const points = mesh.geometry.attributes.position.array;
+    const noise = new Noise();
+    let divide = 10;
+    for (var i =0; i < points.length; i+=3) { 
+        const x = points[i]/divide
+        const y = points[i+1]/divide
+        points[i+2] = noise.perlin2(x,y)*10;
+    }
+    const box = new THREE.BoxGeometry(20,20,20);
+    const boxMesh = new THREE.Mesh(box, new THREE.MeshStandardMaterial({color: "green"}))
+    boxMesh.position.set(0, 40, 0);
+    scene.add(boxMesh)
+    mesh.geometry.attributes.position.needsUpdate = true;
+    scene.add(mesh)
     const clock = new THREE.Clock();
     function animate() { 
+        for (var i = 0; i < points.length; i+=3) { 
+            let time = clock.getElapsedTime()*0.6
+            const x = points[i]/divide+time
+            const y = points[i+1]/divide+time
+            points[i+2] = noise.perlin2(x,y)*2;
+        }    mesh.geometry.attributes.position.needsUpdate = true;
 
-        renderer.render(scene, camera);
-        requestAnimationFrame(animate);
-        controls.update()
-        //material.uniforms.time.value += 0.05;
-        if (waicorder) { waicorder.rotation.y += 0.02;}
-        //if( mixer) { mixer.update(clock.getDelta())}
+        requestAnimationFrame(animate)
+        renderer.render(scene, camera)
 
     }
     animate();
 }
+
+
 
 
 function addCloud(scene: THREE.Scene) { 

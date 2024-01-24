@@ -29,7 +29,14 @@ export function addWater(scene: THREE.Scene) {
             fog: true,
         },
     );
-    console.log(water.geometry.attributes.position.array);
+    const points = water.geometry.attributes.position.array;
+    const noise = new Noise();
+    let divide = 10;
+    for (var i =0 ; i < points.length; i+=3) { 
+        const x = points[i]/divide, y = points[i+1]/divide;
+        points[i+2] = noise.perlin2(x,y)*10;
+    }
+    water.geometry.attributes.position.needsUpdate = true
     water.rotation.x = -Math.PI / 2;
     water.position.z -= 400;
     water.position.y -= 9;
@@ -53,7 +60,7 @@ export async function addMiddleGround(scene: THREE.Scene) {
     return new Promise<void>((resolve, reject) => { 
         const loader = new GLTFLoader()
         loader.load('/testlandscape.glb', (obj) => { 
-            const texture = new THREE.TextureLoader().load('/test.png')
+            const texture = new THREE.TextureLoader().load('/testlandscape2.png')
             texture.flipY = false
             const child = obj.scene.children[0] as THREE.Mesh;
             const scale = 100;
@@ -310,23 +317,6 @@ export function DustDetail(scene: THREE.Scene, mirror :boolean) {
     }
     mesh.instanceMatrix.needsUpdate = true
     scene.add(mesh)
-
-    const addParticles = () => { 
-        const num = 3000;
-        const positions = new Float32Array(num * 3);
-        const geometry = new THREE.BufferGeometry()
-        for (let i = 0; i < num; i++) {
-            positions[i * 3] = (Math.random() - 0.5) * 100;  // Random x coordinate within [-10, 10]
-            positions[i * 3 + 1] = Math.random()  * 50;  // Random y coordinate within [-10, 10]
-            positions[i * 3 + 2] = Math.random() * -900;  // Random z coordinate within [-10, 10]
-        }
-        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        const material = new THREE.PointsMaterial({size: 0.1, color: 0xB2996E});
-        const mesh = new THREE.Points(geometry, material);
-        mesh.name = 'dust'
-        scene.add(mesh)
-    }
-    //addParticles()
 }
 
 
@@ -378,11 +368,12 @@ export function addCloud(scene: THREE.Scene) {
     const loader = new GLTFLoader();
     loader.load('fluffy_cloud.glb', (obj) => { 
         const c = obj.scene.children[0] as THREE.Mesh;
-        const mesh = new THREE.InstancedMesh(c.geometry, new THREE.MeshBasicMaterial({color:"white", transparent: true, opacity: 0.2, side: THREE.DoubleSide}), 10)
-        mesh.scale.set(20,20,20);
+        const mesh = new THREE.InstancedMesh(c.geometry, new THREE.MeshBasicMaterial({color:"white", transparent: true, opacity: 0.1, side: THREE.DoubleSide}), 20)
+        mesh.position.set(0,20,-100);
+        mesh.scale.set(60,60,60)
         const dummy = new THREE.Object3D()
         for (var i = 0; i < mesh.count ;i++) { 
-            dummy.position.set(getRandomArbitrary(-10, 10), 10, Math.random()*-120);
+            dummy.position.set(getRandomArbitrary(-5,5 ),2, Math.random()*-200)
             dummy.updateMatrix();
             mesh.setMatrixAt(i, dummy.matrix)
         }
@@ -392,17 +383,18 @@ export function addCloud(scene: THREE.Scene) {
 }
 
 export function addLights(scene: THREE.Scene) { 
-    const light = new THREE.PointLight(undefined, 5, 300, 0.1);
+    const light = new THREE.PointLight(undefined, 3, 300, 0.1);
     light.position.set(0, 120, 20);
     light.castShadow = true
     light.shadow.mapSize.width = 2500;
     light.shadow.mapSize.height = 2500;
     light.name = 'light'
 
-    const sun = new THREE.DirectionalLight(0x89CFF0, 2);
-    sun.position.set(100, 200, -600);
-    sun.target.position.set(0, 30, -100);
+    const sun = new THREE.DirectionalLight(0xDF9B35, 2);
+    sun.position.set(-200, 400, -3000);
+    sun.target.position.set(0, 20, -100);
     sun.castShadow = true;
+    
     scene.add(sun)
     scene.add(light)
 }
@@ -441,18 +433,3 @@ export function scaleInThings(scene: THREE.Scene, position: number) {
     })
 }
 
-
-export function addStars(scene: THREE.Scene){ 
-    const starGeo = new THREE.BufferGeometry();
-    const starVertices = [];
-    for (let i = 0; i < 350; i++) {
-        const x = getRandomArbitrary(-900, 900);
-        const y = getRandomArbitrary(200, 900);
-        const z = getRandomArbitrary(-1800, -50);
-        starVertices.push(x, y, z);
-    }
-    starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3))
-    const starMaterial = new THREE.PointsMaterial({fog: false,  color: 0xFFFFFF, size: 2});
-    const stars = new THREE.Points(starGeo, starMaterial);
-    scene.add(stars)
-}

@@ -439,6 +439,7 @@ export const gridMaterial = new THREE.ShaderMaterial({
 
 
 export function loadDisplay(scene: THREE.Scene) { 
+    return
     constructBorder(scene);
     addLines(scene)
     addTransparentBackground(scene)

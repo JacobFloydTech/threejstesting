@@ -1,13 +1,13 @@
 "use client"
-import { DustDetail, LoadTree, addCloud, addLights, addMiddleGround, addStars, addWater, animateMountains, animateWater, changeSunPosition, getMiddleGround, loadMountainGLB , scaleInThings, } from './functions';
+import { DustDetail, LoadTree, addCloud, addLights, addMiddleGround, addWater, animateMountains, animateWater, changeSunPosition, getMiddleGround, loadMountainGLB , scaleInThings, } from './functions';
 import { MutableRefObject, useEffect, useRef, useState } from "react"
 import * as THREE from 'three'
 import { BokehPass, EffectComposer, OutputPass, RenderPass, ShaderPass, Water } from 'three/examples/jsm/Addons.js';
 import {   animateRings,  changeTImeValue, handleAnimation, loadHDR, loadDisplay, addWaicorder} from './display';
-
 import Loading from './loading';
+//@ts-ignore
+import {Noise} from 'noisejs'
 import { addWaicorderMobile } from './displayMobile';
-
 
 export default function Page() {
     const ref = useRef<any>(null);
@@ -31,10 +31,7 @@ async function setScene(ref: MutableRefObject<any>, setLoading: Function) {
     let velocity = -0.05;
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 400);
-    const renderer = new THREE.WebGLRenderer({
-        powerPreference: "high-performance",
-        antialias: true
-    });
+    const renderer = new THREE.WebGLRenderer()
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.sortObjects = false;
     renderer.shadowMap.enabled = true;
@@ -44,14 +41,19 @@ async function setScene(ref: MutableRefObject<any>, setLoading: Function) {
         addMiddleGround(scene),
         //loadHDR(scene, renderer)
     ])
+
+
+    const texture = new THREE.TextureLoader().load('sun.jpg');
+    texture.offset = new THREE.Vector2(-0.1,-0.2);
+    scene.background = texture;
     getMiddleGround(scene)
     setLoading(false)
-    addStars(scene)
+
     addWater(scene)
     DustDetail(scene, true)
     DustDetail(scene, false)
     addCloud(scene)
-    scene.fog = new THREE.FogExp2( 0x000000, 0.008 );
+    scene.fog = new THREE.FogExp2( 0xd28032, 0.003 );
     const water = scene.getObjectByName('waterMesh') as Water;
 
     camera.position.set(0, 30, 100);
@@ -59,7 +61,7 @@ async function setScene(ref: MutableRefObject<any>, setLoading: Function) {
     addLights(scene)
     
     LoadTree(scene)
-    let mixer = await (window.outerWidth >= 1366 ? addWaicorder(scene) :addWaicorderMobile(scene) )
+    //let mixer = await (window.outerWidth >= 1366 ? addWaicorder(scene) :addWaicorderMobile(scene) )
     const waicorder = scene.getObjectByName('Armature003') as THREE.Object3D;
     const clock = new THREE.Clock();
     //Post processing init
@@ -80,18 +82,28 @@ async function setScene(ref: MutableRefObject<any>, setLoading: Function) {
         composer,
         bokeh: bokehPass
     }
-
+    const mesh = scene.getObjectByName('waterMesh') as THREE.InstancedMesh;
+    const points = mesh.geometry.attributes.position.array;
+    const divide=  10;
+    const noise = new Noise()
     composer.addPass(outputPass)
 
     function animate() {
         const scaleValue = 0.7+0.5* Math.abs(Math.sin(Date.now() * 0.0005));
         animateRings(scene, scaleValue)
         //animateWater(clock.getElapsedTime(), scene)
-        animateMountains(scene, camera.position.z);
+     //   animateMountains(scene, camera.position.z);
         changeTImeValue(scene, clock.getDelta());
         scaleInThings(scene, camera.position.z);
         handleAnimation(camera.position.z, scene);
         changeSunPosition(scene, camera.position.z);
+        for (var i = 0; i < points.length; i+=3) { 
+            let time = clock.getElapsedTime()*0.5;
+            const x = points[i]/divide-time
+            const y = points[i+1]/divide-time
+            points[i+2] = noise.perlin2(x,y)*3.2;
+        }    mesh.geometry.attributes.position.needsUpdate = true;
+
       
      
         //mixer?.update(clock.getDelta()*100)
@@ -100,7 +112,7 @@ async function setScene(ref: MutableRefObject<any>, setLoading: Function) {
         if (velocity < -0.05) { 
             velocity += 0.01;
         }
-        mixer?.update(clock.getDelta()*100)
+        //mixer?.update(clock.getDelta()*100)
 
         if (camera.position.z < -950 || camera.position.z > 1) {
             if (camera.position.z > 1) { 
