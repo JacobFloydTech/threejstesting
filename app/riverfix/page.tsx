@@ -1,9 +1,10 @@
 "use client"
-import { DustDetail, LoadTree, addLights, addMiddleGround, addStars, addWater, animateMountains, changeSunPosition, getMiddleGround, loadCloud, loadMountainGLB , scaleInThings, } from './functions';
+import { DustDetail, LoadTree, addCloud, addLights, addMiddleGround, addStars, addWater, animateMountains, animateWater, changeSunPosition, getMiddleGround, loadMountainGLB , scaleInThings, } from './functions';
 import { MutableRefObject, useEffect, useRef, useState } from "react"
 import * as THREE from 'three'
 import { BokehPass, EffectComposer, OutputPass, RenderPass, ShaderPass, Water } from 'three/examples/jsm/Addons.js';
-import { addDetailBehindWaicorder, addWaicorder,  animateRings,  changeTImeValue, depthShader, handleAnimation, loadHDR } from './display';
+import {   animateRings,  changeTImeValue, handleAnimation, loadHDR, loadDisplay, addWaicorder} from './display';
+
 import Loading from './loading';
 import { addWaicorderMobile } from './displayMobile';
 
@@ -29,10 +30,14 @@ async function setScene(ref: MutableRefObject<any>, setLoading: Function) {
     if (!ref.current) { return }
     let velocity = -0.05;
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100000);
-    const renderer = new THREE.WebGLRenderer();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 400);
+    const renderer = new THREE.WebGLRenderer({
+        powerPreference: "high-performance",
+        antialias: true
+    });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.sortObjects = false;
+    renderer.shadowMap.enabled = true;
     ref.current.appendChild(renderer.domElement);
     await Promise.all([
         loadMountainGLB(scene),
@@ -43,9 +48,9 @@ async function setScene(ref: MutableRefObject<any>, setLoading: Function) {
     setLoading(false)
     addStars(scene)
     addWater(scene)
-   
-    loadCloud(scene)
- 
+    DustDetail(scene, true)
+    DustDetail(scene, false)
+    addCloud(scene)
     scene.fog = new THREE.FogExp2( 0x000000, 0.008 );
     const water = scene.getObjectByName('waterMesh') as Water;
 
@@ -61,13 +66,16 @@ async function setScene(ref: MutableRefObject<any>, setLoading: Function) {
     const renderPass = new RenderPass(scene, camera);
     const bokehPass = new BokehPass(scene, camera, { 
         focus: 12,
-        aperture: 0.0002,
-        maxblur: 0.004,
+        aperture: 0.00001,
+        maxblur: 0.001, 
     })
+
+
     const outputPass = new OutputPass();
     const composer = new EffectComposer(renderer);
     composer.addPass(renderPass);
     composer.addPass(bokehPass)
+
     const postProccessing = { 
         composer,
         bokeh: bokehPass
@@ -78,17 +86,21 @@ async function setScene(ref: MutableRefObject<any>, setLoading: Function) {
     function animate() {
         const scaleValue = 0.7+0.5* Math.abs(Math.sin(Date.now() * 0.0005));
         animateRings(scene, scaleValue)
+        //animateWater(clock.getElapsedTime(), scene)
         animateMountains(scene, camera.position.z);
         changeTImeValue(scene, clock.getDelta());
         scaleInThings(scene, camera.position.z);
         handleAnimation(camera.position.z, scene);
         changeSunPosition(scene, camera.position.z);
-        mixer?.update(clock.getDelta());
+      
+     
+        //mixer?.update(clock.getDelta()*100)
         requestAnimationFrame(animate);
         camera.position.z += velocity
         if (velocity < -0.05) { 
             velocity += 0.01;
         }
+        mixer?.update(clock.getDelta()*100)
 
         if (camera.position.z < -950 || camera.position.z > 1) {
             if (camera.position.z > 1) { 
@@ -98,8 +110,8 @@ async function setScene(ref: MutableRefObject<any>, setLoading: Function) {
         }
         camera.updateMatrix();
         camera.updateProjectionMatrix();
-        if (water) { water.material.uniforms.time.value += 0.01; console.log(water.material);}
-        if (waicorder) { waicorder.rotation.y += 0.02}
+        if (water) { water.material.uniforms.time.value -= 0.05; }
+        if (waicorder){ waicorder.rotation.y += 0.02}
         postProccessing.composer.render(0.1);
 
 

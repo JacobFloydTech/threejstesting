@@ -1,6 +1,7 @@
 "use client"
 import { useRef, useEffect, MutableRefObject } from "react";
 import * as THREE from 'three'
+import { ImprovedNoise } from "three/examples/jsm/Addons.js";
 import { FontLoader, GLTFLoader, OrbitControls, TextGeometry } from "three/examples/jsm/Addons.js";
 const radius = 0.2
 
@@ -22,23 +23,36 @@ async function setScene(ref: MutableRefObject<any>) {
     const renderer = new THREE.WebGLRenderer();
     renderer.setSize(window.innerWidth, window.innerHeight);
     ref.current.appendChild(renderer.domElement);
-    camera.position.z = 50;
-    const mixer = await addWaicorder(scene);
-
+    camera.position.z = 50
+    addCloud(scene)
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.update()
+    //let mixer = await addWaicorder(scene)
     const waicorder = scene.getObjectByName('Armature003') as THREE.Object3D;
     const clock = new THREE.Clock();
     function animate() { 
+
         renderer.render(scene, camera);
         requestAnimationFrame(animate);
         controls.update()
-        mixer?.update(clock.getDelta())
         //material.uniforms.time.value += 0.05;
         if (waicorder) { waicorder.rotation.y += 0.02;}
+        //if( mixer) { mixer.update(clock.getDelta())}
 
     }
     animate();
+}
+
+
+function addCloud(scene: THREE.Scene) { 
+    const loader = new GLTFLoader();
+    loader.load('fluffy_cloud.glb', (obj) => { 
+        const c = obj.scene.children[0] as THREE.Mesh;
+        const texture = new THREE.TextureLoader().load('cloudtexture.png');
+        const mesh = new THREE.Mesh(c.geometry, new THREE.MeshBasicMaterial({color:"white", transparent: true, opacity: 0.2, side: THREE.DoubleSide}))
+        mesh.scale.set(10,10,10)
+        scene.add(mesh);
+    })
 }
 
 function addRiverGLB(scene: THREE.Scene) { 
@@ -195,3 +209,59 @@ const borderShaderMaterial = new THREE.ShaderMaterial({
     transparent: true,
     
 })
+
+const vertex = `
+in vec3 position;
+in mat4 instanceMatrix;  // New attribute for instance matrix
+
+uniform mat4 modelViewMatrix;
+uniform mat4 projectionMatrix;
+
+void main() {
+    // Transform the position by the instance matrix
+    vec4 transformed = instanceMatrix * vec4(position, 1.0);
+
+    gl_Position = projectionMatrix * modelViewMatrix * transformed;
+}
+`
+
+const frag = `
+precision highp float;
+precision highp sampler3D;
+
+uniform sampler3D map;
+uniform float threshold;
+uniform float range;
+uniform float opacity;
+uniform float steps;
+
+void main() {
+    vec3 rayDir = normalize(vec3(1.0, 0.0, 0.0)); // Fixed ray direction (you can customize this)
+    vec2 bounds = hitBox(vec3(0.0), rayDir);
+
+    if (bounds.x > bounds.y) discard;
+
+    bounds.x = max(bounds.x, 0.0);
+
+    vec3 p = vec3(0.0) + bounds.x * rayDir;
+    float delta = (bounds.y - bounds.x) / steps;
+
+    vec4 ac = vec4(0.0);
+
+    for (float t = bounds.x; t < bounds.y; t += delta) {
+        float d = sample1(p + 0.5);
+        d = smoothstep(threshold - range, threshold + range, d) * opacity;
+
+        float col = 0.7; // Adjust the cloud color as needed
+
+        ac.rgb += (1.0 - ac.a) * d * col;
+        ac.a += (1.0 - ac.a) * d;
+
+        if (ac.a >= 0.95) break;
+
+        p += rayDir * delta;
+    }
+
+    gl_FragColor = ac;
+}
+`

@@ -115,6 +115,8 @@ export function addNewGrass(scene: THREE.Scene) {
         const mesh = new THREE.InstancedMesh(child.geometry, child.material, count);
         mesh.rotation.y = Math.PI/2;
         mesh.name = 'grass'
+        mesh.castShadow = true;
+        mesh.receiveShadow = true
         const dummy = new THREE.Object3D()
         while (index <= count) { 
             for (var instances = 0; instances < plane.count; instances++) { 
@@ -142,6 +144,8 @@ export function addNewGrass(scene: THREE.Scene) {
     })
 }
 
+
+
 export function addWaicorder(scene :THREE.Scene): Promise<THREE.AnimationMixer |  null> { 
     return new Promise((resolve) => { 
         var mixer: THREE.AnimationMixer | null =null;
@@ -149,13 +153,14 @@ export function addWaicorder(scene :THREE.Scene): Promise<THREE.AnimationMixer |
         loader.load('/waicorderanimation.glb', (obj) => { 
             mixer = new THREE.AnimationMixer(obj.scene);
             var action = mixer.clipAction(obj.animations.pop()!);
+            action.play();
             obj.scene.name = 'waicorder'
             action.clampWhenFinished = true;
             action.repetitions = 1;
-            console.log(action.time);
             obj.scene.scale.set(0,0,0); 
-            obj.scene.position.set(-3, 25, 0)
+            obj.scene.position.set(-2.5, 20, 0)
             scene.add(obj.scene)
+            mixer.setTime(5)
             resolve(mixer)
         })
     })
@@ -191,7 +196,7 @@ export function handleAnimation(currentZ: number, scene: THREE.Scene) {
     const end = -150;
     const startFade = -700;
     const endFade = -1000; 
-    const closestDistance = window.outerWidth >= 1366 ? 20 : 40;
+    const closestDistance = window.outerWidth >= 1366 ? 30 : 50;
     ['bottomRing', 'topRing','planeBackground','waicorder', 'text', 'top', 'left', 'right', 'bottom', 'pointLineMesh', 'ringMesh', 'diagonalLineMesh']
         .map((e) => scene.getObjectByName(e) as THREE.Mesh)
         .filter((x) => x)
@@ -230,7 +235,7 @@ export function handleAnimation(currentZ: number, scene: THREE.Scene) {
         const baseScale = 45;
         const waicorder = scene.getObjectByName('waicorder') as THREE.Group;
         if (!waicorder) return
-        waicorder.position.z += 2;
+        waicorder.position.z += 4;
         if (currentZ > start) { return waicorder.scale.set(0,0,0)}
         if (currentZ < end && currentZ > startFade) { return waicorder.scale.set(baseScale,baseScale,baseScale)}
         if (currentZ > end) { 
@@ -242,6 +247,7 @@ export function handleAnimation(currentZ: number, scene: THREE.Scene) {
             const scale = baseScale*(1-per);
             waicorder.scale.set(scale,scale,scale)
         }
+
     }
 }
 
