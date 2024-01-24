@@ -92,8 +92,10 @@ export function addLines(scene: THREE.Scene) {
     diagonalLineMesh.name = 'diagonalLineMesh'
     diagonalLineMesh.renderOrder = 10;
     mesh.material.blending = THREE.NormalBlending;
-    const light = new THREE.DirectionalLight(	0x0FFFF, 12);
-    light.position.set(0, 20, 0);
+    const light = new THREE.DirectionalLight(0x0FFFF, 0);
+    light.intensity = 0;
+    light.castShadow = true
+    light.position.set(0, 20, -100);
     light.name = 'blueLight';
 
     scene.add(light);
@@ -150,7 +152,7 @@ export function addWaicorder(scene :THREE.Scene): Promise<THREE.AnimationMixer |
     return new Promise((resolve) => { 
         var mixer: THREE.AnimationMixer | null =null;
         const loader = new GLTFLoader();
-        loader.load('/waicorderanimation.glb', (obj) => { 
+        loader.load('/testingwaicorder.glb', (obj) => { 
             mixer = new THREE.AnimationMixer(obj.scene);
             var action = mixer.clipAction(obj.animations.pop()!);
             action.play();
@@ -160,7 +162,6 @@ export function addWaicorder(scene :THREE.Scene): Promise<THREE.AnimationMixer |
             obj.scene.scale.set(0,0,0); 
             obj.scene.position.set(-2.5, 20, 0)
             scene.add(obj.scene)
-            mixer.setTime(5)
             resolve(mixer)
         })
     })
@@ -196,7 +197,7 @@ export function handleAnimation(currentZ: number, scene: THREE.Scene) {
     const end = -150;
     const startFade = -700;
     const endFade = -1000; 
-    const closestDistance = window.outerWidth >= 1366 ? 30 : 50;
+    const closestDistance = window.outerWidth >= 1366 ? 30 : 35;
     ['bottomRing', 'topRing','planeBackground','waicorder', 'text', 'top', 'left', 'right', 'bottom', 'pointLineMesh', 'ringMesh', 'diagonalLineMesh']
         .map((e) => scene.getObjectByName(e) as THREE.Mesh)
         .filter((x) => x)
@@ -224,6 +225,7 @@ export function handleAnimation(currentZ: number, scene: THREE.Scene) {
         const light = scene.getObjectByName('blueLight') as THREE.Light;
         let scale = 4;
         if (!light) return
+        
         light.position.z = currentZ -100;
         if (currentZ > start) { light.intensity = 0}
         if (currentZ < end && currentZ > startFade) {light.intensity = scale}
@@ -404,11 +406,18 @@ precision highp float;
 varying vec2 vUv;
 uniform float opacity;
 uniform float time;
+uniform float mobile;
 void main()
 {
 
     // Adjust the spacing between lines
+    float transformedOpacity = opacity;
     float lineSpacing = 0.01;
+    if (mobile == 1.) { 
+        transformedOpacity *= 1.5;
+        lineSpacing *= 1.8;
+    }
+
 
     // Calculate the index of the line
     float lineIndex = floor((vUv.y+time*0.1) / lineSpacing);
@@ -416,10 +425,11 @@ void main()
     // Use modulo to create repeating pattern
     float modResult = mod(lineIndex, 2.0);
     // Set color based on the repeating pattern
+
     if (modResult < 1.0) {
-        gl_FragColor = vec4(0.,1.,1., opacity); // Color for lines
+        gl_FragColor = vec4(0.,1.,1., transformedOpacity); // Color for lines
     } else {
-        gl_FragColor = vec4(0.,.7,.7,opacity); // Color for gaps
+        gl_FragColor = vec4(0.,.7,.7,transformedOpacity); // Color for gaps
     }
 }
 `;
@@ -427,7 +437,8 @@ void main()
 export const gridMaterial = new THREE.ShaderMaterial({
     uniforms: {
         opacity: { value :0},
-        time: {value: 0}
+        time: {value: 0}, 
+        mobile: {value: 0}
     },
     vertexShader: vertexShader,
     fragmentShader: gridFragment,
@@ -439,7 +450,6 @@ export const gridMaterial = new THREE.ShaderMaterial({
 
 
 export function loadDisplay(scene: THREE.Scene) { 
-    return
     constructBorder(scene);
     addLines(scene)
     addTransparentBackground(scene)

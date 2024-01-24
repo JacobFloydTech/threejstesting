@@ -1,5 +1,5 @@
 "use client"
-import { DustDetail, LoadTree, addCloud, addLights, addMiddleGround, addWater, animateMountains, animateWater, changeSunPosition, getMiddleGround, loadMountainGLB , scaleInThings, } from './functions';
+import { DustDetail, LoadTree, addCloud, addLights, addMiddleGround, addWater, changeSunPosition, getMiddleGround, loadMountainGLB , scaleInThings, } from './functions';
 import { MutableRefObject, useEffect, useRef, useState } from "react"
 import * as THREE from 'three'
 import { BokehPass, EffectComposer, OutputPass, RenderPass, ShaderPass, Water } from 'three/examples/jsm/Addons.js';
@@ -15,10 +15,16 @@ export default function Page() {
 
     useEffect(() => { setScene(ref, setLoading) }, [])
     return (
-        <>
-            <div className={"w-full h-screen bg-black" + (loading ? " hidden" : ' fixed')} ref={ref} />
-            {loading && <Loading/>}
-        </>
+        <div className='w-full h-screen fixed top-0 left-0'>
+
+            <div className={"w-full h-screen" + (loading ? " hidden" : ' fixed')} ref={ref} />
+            {loading ? <Loading/> : 
+                <>
+                    <img src='/sun.jpg' className='w-full -translate-y-40  md:-translate-y-80 object-cover h-full absolute top-0 left-0 -z-40 bg-black'/>
+                    <img src='/sun.jpg' className='w-full  object-cover h-full absolute top-0 left-0 -z-50 bg-black'/>
+                </>
+            }
+        </div>
 
     )
 }
@@ -31,7 +37,7 @@ async function setScene(ref: MutableRefObject<any>, setLoading: Function) {
     let velocity = -0.05;
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 400);
-    const renderer = new THREE.WebGLRenderer()
+    const renderer = new THREE.WebGLRenderer({alpha: true})
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.sortObjects = false;
     renderer.shadowMap.enabled = true;
@@ -39,29 +45,27 @@ async function setScene(ref: MutableRefObject<any>, setLoading: Function) {
     await Promise.all([
         loadMountainGLB(scene),
         addMiddleGround(scene),
-        //loadHDR(scene, renderer)
     ])
 
-
-    const texture = new THREE.TextureLoader().load('sun.jpg');
-    texture.offset = new THREE.Vector2(-0.1,-0.2);
-    scene.background = texture;
     getMiddleGround(scene)
-    setLoading(false)
+    setTimeout(() => {
+        setLoading(false)
+    }, 200);
 
     addWater(scene)
     DustDetail(scene, true)
     DustDetail(scene, false)
     addCloud(scene)
-    scene.fog = new THREE.FogExp2( 0xd28032, 0.003 );
+    scene.fog = new THREE.FogExp2( 0xd28032, 0.006 );
     const water = scene.getObjectByName('waterMesh') as Water;
-
+    scene.background = null
     camera.position.set(0, 30, 100);
     camera.lookAt(0, 30, 50);
     addLights(scene)
     
     LoadTree(scene)
-    //let mixer = await (window.outerWidth >= 1366 ? addWaicorder(scene) :addWaicorderMobile(scene) )
+    let mixer = await (window.outerWidth >= 1366 ? addWaicorder(scene) :addWaicorderMobile(scene) )
+
     const waicorder = scene.getObjectByName('Armature003') as THREE.Object3D;
     const clock = new THREE.Clock();
     //Post processing init
@@ -71,12 +75,18 @@ async function setScene(ref: MutableRefObject<any>, setLoading: Function) {
         aperture: 0.00001,
         maxblur: 0.001, 
     })
+    var width = window.innerWidth || 1;
+    var height = window.innerHeight || 1;
+    var parameters = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, stencilBuffer: false };
 
-
+    var renderTarget = new THREE.WebGLRenderTarget( width, height, parameters );
+    renderPass.clearAlpha = 0;
+    renderPass.clearColor = new THREE.Color( 0, 0, 0 );
     const outputPass = new OutputPass();
-    const composer = new EffectComposer(renderer);
+    const composer = new EffectComposer(renderer, renderTarget);
     composer.addPass(renderPass);
-    composer.addPass(bokehPass)
+    composer.addPass(bokehPass);
+    
 
     const postProccessing = { 
         composer,
@@ -86,33 +96,31 @@ async function setScene(ref: MutableRefObject<any>, setLoading: Function) {
     const points = mesh.geometry.attributes.position.array;
     const divide=  10;
     const noise = new Noise()
-    composer.addPass(outputPass)
+        composer.addPass(outputPass)
 
     function animate() {
         const scaleValue = 0.7+0.5* Math.abs(Math.sin(Date.now() * 0.0005));
         animateRings(scene, scaleValue)
-        //animateWater(clock.getElapsedTime(), scene)
-     //   animateMountains(scene, camera.position.z);
         changeTImeValue(scene, clock.getDelta());
         scaleInThings(scene, camera.position.z);
         handleAnimation(camera.position.z, scene);
         changeSunPosition(scene, camera.position.z);
         for (var i = 0; i < points.length; i+=3) { 
-            let time = clock.getElapsedTime()*0.5;
+            let time = clock.getElapsedTime()*0.6;
             const x = points[i]/divide-time
             const y = points[i+1]/divide-time
-            points[i+2] = noise.perlin2(x,y)*3.2;
+            points[i+2] = noise.perlin2(x,y)*3;
         }    mesh.geometry.attributes.position.needsUpdate = true;
 
-      
+        mixer?.update(0.02);
+        console.log(mixer?.time);
      
-        //mixer?.update(clock.getDelta()*100)
+
         requestAnimationFrame(animate);
         camera.position.z += velocity
         if (velocity < -0.05) { 
             velocity += 0.01;
         }
-        //mixer?.update(clock.getDelta()*100)
 
         if (camera.position.z < -950 || camera.position.z > 1) {
             if (camera.position.z > 1) { 
@@ -124,12 +132,12 @@ async function setScene(ref: MutableRefObject<any>, setLoading: Function) {
         camera.updateProjectionMatrix();
         if (water) { water.material.uniforms.time.value -= 0.05; }
         if (waicorder){ waicorder.rotation.y += 0.02}
-        postProccessing.composer.render(0.1);
+        renderer.render(scene, camera)
 
 
     }
     function onWindowResize() {
-
+        //setBackground(scene)
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
 
@@ -149,4 +157,5 @@ async function setScene(ref: MutableRefObject<any>, setLoading: Function) {
 function roundToNearestIncrement(number: number, increment: number) {
     return Math.floor(number / increment) * increment;
 }
+
 

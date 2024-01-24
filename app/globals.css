@@ -5,3 +5,10 @@
 html, body { 
   height: 100%;
 }
+
+#riverContainer { 
+  background-image: url("/sun.jpg");
+  background-repeat: no-repeat;
+  background-position: 50% 50%;
+  height:100%;
+}

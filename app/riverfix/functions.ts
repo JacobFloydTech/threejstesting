@@ -1,12 +1,10 @@
 import * as THREE from 'three';
-import {  FBXLoader, GLTFLoader, Reflector, SVGLoader, TextGeometry, Water } from 'three/examples/jsm/Addons.js';
+import {  FBXLoader, GLTFLoader, Reflector, SVGLoader, TextGeometry, Water, DRACOLoader} from 'three/examples/jsm/Addons.js';
 //@ts-ignore
 import { Noise } from 'noisejs'
 import { addNewGrass } from './display';
 import { loadDisplay } from './display';
 import { loadDisplayMobile } from './displayMobile';
-import { ImprovedNoise } from 'three/examples/jsm/Addons.js';
-
 
 export function addWater(scene: THREE.Scene) {
 
@@ -17,7 +15,6 @@ export function addWater(scene: THREE.Scene) {
     })
     var water = new Water(
         waterGeometry,
-
         {
             textureWidth: 1024,
             textureHeight: 1024,
@@ -44,17 +41,6 @@ export function addWater(scene: THREE.Scene) {
     scene.add(water);
 }
 
-export function animateWater(time: number, scene: THREE.Scene) { 
-    const mesh = scene.getObjectByName('waterMesh') as THREE.Mesh
-    if (!mesh) return
-    const points = mesh.geometry.attributes.position.array;
-    for (var i =0 ; i < points.length; i+=3) { 
-        const x = points[i]
-        points[i+1] = Math.sin(x+time)*0.5;
-    }
-    mesh.geometry.attributes.position.needsUpdate = true;
-    
-}
 
 export async function addMiddleGround(scene: THREE.Scene) { 
     return new Promise<void>((resolve, reject) => { 
@@ -175,7 +161,7 @@ export function LoadTree(scene: THREE.Scene) {
         children[0].children.forEach((child, i) => { 
             (child as THREE.Mesh).castShadow = true;
             (child as THREE.Mesh).receiveShadow = true;
-            const material = new THREE.MeshStandardMaterial({color: i == 1 ? "green" : "brown"}) 
+            const material = new THREE.MeshStandardMaterial({color: i == 1 ? "green" : "#63462D"  }) 
             const instancedmesh = new THREE.InstancedMesh((child as THREE.Mesh).geometry,material, count);
             for (var i = 0; i < instancedmesh.count; i++) { 
                 dummy.position.copy(positions[i]);
@@ -198,7 +184,11 @@ export function LoadTree(scene: THREE.Scene) {
 export async function loadMountainGLB(scene: THREE.Scene) { 
     return new Promise<void>((resolve, reject) => { 
         const loader = new GLTFLoader();
-        loader.load('/mountain.glb', (gltf) => {
+        const dracoLoader = new DRACOLoader();
+        dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/')
+        dracoLoader.setDecoderConfig({type: 'js'})
+        loader.setDRACOLoader( dracoLoader );
+        loader.load('/testingmountain.glb', (gltf) => {
         
           
             gltf.scene.children.forEach((e) => {
@@ -370,7 +360,7 @@ export function addCloud(scene: THREE.Scene) {
         const c = obj.scene.children[0] as THREE.Mesh;
         const mesh = new THREE.InstancedMesh(c.geometry, new THREE.MeshBasicMaterial({color:"white", transparent: true, opacity: 0.1, side: THREE.DoubleSide}), 20)
         mesh.position.set(0,20,-100);
-        mesh.scale.set(60,60,60)
+        mesh.scale.set(80,80,80)
         const dummy = new THREE.Object3D()
         for (var i = 0; i < mesh.count ;i++) { 
             dummy.position.set(getRandomArbitrary(-5,5 ),2, Math.random()*-200)

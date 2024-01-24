@@ -13,8 +13,8 @@ export function addDisplayTextMobile(scene: THREE.Scene) {
                 height: 0.05,
                 size: 0.8,
             })
-            const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({transparent: true}));
-            mesh.position.set(-9, 45, 0);
+            const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({transparent: true, color: 'black'}));
+            mesh.position.set(-9, 47, 0);
             mesh.name = 'text';
             mesh.renderOrder = 10;
             mesh.material.blending = THREE.NormalBlending;
@@ -30,12 +30,13 @@ export function addWaicorderMobile(scene :THREE.Scene): Promise<THREE.AnimationM
         loader.load('/waicorderanimation.glb', (obj) => { 
             mixer = new THREE.AnimationMixer(obj.scene);
             var action = mixer.clipAction(obj.animations.pop()!);
+            action.play();
             obj.scene.name = 'waicorder'
             action.clampWhenFinished = true;
             action.repetitions = 1;
             console.log(action.time);
             obj.scene.scale.set(0,0,0); 
-            obj.scene.position.set(6, 14, 0)
+            obj.scene.position.set(6, 12, 0)
             scene.add(obj.scene)
             resolve(mixer)
         })
@@ -52,14 +53,15 @@ export function addDetailBehindWaicorderMobile(scene: THREE.Scene) {
     bottomRing.scale.set(scale,scale,scale)
     topRing.name = 'topRing'
     bottomRing.name = 'bottomRing'
-    topRing.position.set(0, 18, 0)
-    bottomRing.position.set(0, 18, 0);
+    topRing.position.set(0, 19, 0)
+    bottomRing.position.set(0, 19, 0);
     
     scene.add(topRing)
     scene.add(bottomRing)
 }
 
-function addTransparentBackgroundMobile(scene :THREE.Scene) { 
+function addTransparentBackgroundMobile(scene :THREE.Scene) {
+    gridMaterial.uniforms.mobile.value = 1;
     const plane = new THREE.PlaneGeometry(20, 40,1,1);
     const mesh = new THREE.Mesh(plane, gridMaterial)
     mesh.position.set(0, 30, 0);
