@@ -197,7 +197,7 @@ export function handleAnimation(currentZ: number, scene: THREE.Scene) {
     const end = -150;
     const startFade = -700;
     const endFade = -1000; 
-    const closestDistance = window.outerWidth >= 1366 ? 30 : 35;
+    const closestDistance = 30;
     ['bottomRing', 'topRing','planeBackground','waicorder', 'text', 'top', 'left', 'right', 'bottom', 'pointLineMesh', 'ringMesh', 'diagonalLineMesh']
         .map((e) => scene.getObjectByName(e) as THREE.Mesh)
         .filter((x) => x)

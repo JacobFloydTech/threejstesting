@@ -99,10 +99,12 @@ function randomFilling(scene: THREE.Scene) {
     if (!mesh) return
 
     const box = new THREE.PlaneGeometry(10,11);
+    const remainderMesh  = new THREE.InstancedMesh(box, new THREE.MeshBasicMaterial({color: 'blue'}), mesh.count-1);
+
     const randomValue = Math.round(Math.random()*mesh.count)
+    const dummy = new THREE.Object3D();
     for (var i = 0; i < mesh.count; i++) { 
         if (i == randomValue) { 
-    
             const matrix = new THREE.Matrix4();
             mesh.getMatrixAt(i, matrix);
             const position = new THREE.Vector3();
@@ -120,11 +122,26 @@ function randomFilling(scene: THREE.Scene) {
             boxmesh.name = 'highlight'
             boxmesh.userData.index = randomValue;
             break;
+        } else { 
+            const matrix = new THREE.Matrix4();
+            mesh.getMatrixAt(i, matrix);
+       
+            const position = new THREE.Vector3();
+            matrix.decompose(position, new THREE.Quaternion(), new THREE.Vector3());
+            console.log(position);
+            dummy.position.x = position.x;
+            dummy.position.z = position.y;
+            dummy.position.y = -position.z;
+            dummy.position.x += 50;
+            dummy.position.z += 50;
+            dummy.position.y -= 500;
+            dummy.rotation.x = Math.PI/2;
+            dummy.scale.set(10,10,10);
+            dummy.updateMatrix();
+            remainderMesh.setMatrixAt(i, dummy.matrix);
         }
-
-        
-        
     }
+    remainderMesh.instanceMatrix.needsUpdate = true;
 }
 
 

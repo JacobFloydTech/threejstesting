@@ -9,6 +9,9 @@ import Loading from './loading';
 import {Noise} from 'noisejs'
 import { addWaicorderMobile } from './displayMobile';
 
+
+let velocity = -0.05;
+
 export default function Page() {
     const ref = useRef<any>(null);
     const [loading, setLoading] = useState(true)
@@ -34,7 +37,7 @@ export default function Page() {
 
 async function setScene(ref: MutableRefObject<any>, setLoading: Function) {
     if (!ref.current) { return }
-    let velocity = -0.05;
+
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 400);
     const renderer = new THREE.WebGLRenderer({alpha: true})
@@ -113,8 +116,6 @@ async function setScene(ref: MutableRefObject<any>, setLoading: Function) {
         }    mesh.geometry.attributes.position.needsUpdate = true;
 
         mixer?.update(0.02);
-        console.log(mixer?.time);
-     
 
         requestAnimationFrame(animate);
         camera.position.z += velocity
@@ -151,6 +152,7 @@ async function setScene(ref: MutableRefObject<any>, setLoading: Function) {
     }
     window.addEventListener('resize', onWindowResize, false);
     window.addEventListener('wheel', onWheel, false);
+    addMobileListeners()
 
     animate()
 }
@@ -159,3 +161,25 @@ function roundToNearestIncrement(number: number, increment: number) {
 }
 
 
+
+
+function addMobileListeners() { 
+
+    let startY: number | null = 0;
+    
+    window.addEventListener('touchstart', (e) => {
+        startY = e.touches[0].clientY;
+    });
+    window.addEventListener('touchmove', (e) => { 
+        if (!startY) return
+        const newY = e.touches[0].clientY;
+        const diff = startY-newY;
+        if (diff > 0) { 
+            velocity -= diff*0.0001;
+        } else { 
+            velocity += diff*0.0001;
+        }
+        
+    })
+    window.addEventListener('touchend', () => startY = null)
+}
