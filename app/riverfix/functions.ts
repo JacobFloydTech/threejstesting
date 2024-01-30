@@ -9,7 +9,7 @@ import { loadDisplayMobile } from './displayMobile';
 export function addWater(scene: THREE.Scene) {
 
     var waterGeometry = new THREE.PlaneGeometry(200, 100*20 , 40, 40);
-    const texture =  new THREE.TextureLoader().load('waternormals.jpg', function (texture) {
+    const texture =  new THREE.TextureLoader().load('waternormals1.jpg', function (texture) {
         texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
         texture.rotation = Math.PI;
     })
@@ -19,13 +19,16 @@ export function addWater(scene: THREE.Scene) {
             textureWidth: 1024,
             textureHeight: 1024,
             waterNormals: texture,
-            alpha: 0.8,// Transrency
-            sunColor: 0xffab26,
+            alpha: 1,// Transrency
+            sunColor: 0xF5F5F5,
+            sunDirection: new THREE.Vector3(3,3,-3),
             waterColor: 0x0000FF,
-            distortionScale: 1.5,
+            distortionScale: 1,
             fog: true,
+          
         },
     );
+    water.geometry.computeVertexNormals();
     const points = water.geometry.attributes.position.array;
     const noise = new Noise();
     let divide = 10;
@@ -58,8 +61,7 @@ export async function addMiddleGround(scene: THREE.Scene) {
                
                 dummy.scale.set(scale,scale,scale)
                 dummy.receiveShadow = true;
-                console.log(dummy.position);
-            
+
                 dummy.updateMatrix();
                 instancedMesh.setMatrixAt(i, dummy.matrix);
             }
@@ -71,7 +73,7 @@ export async function addMiddleGround(scene: THREE.Scene) {
             addBoulders(scene)
             addNewGrass(scene)
         
-          //  window.outerWidth >= 1366 ? loadDisplay(scene) : loadDisplayMobile(scene)
+            window.outerWidth >= 1366 ? loadDisplay(scene) : loadDisplayMobile(scene)
             
             resolve();
         })
@@ -475,13 +477,10 @@ export function addLights(scene: THREE.Scene) {
     light.shadow.mapSize.width = 2500;
     light.shadow.mapSize.height = 2500;
     light.name = 'light'
-
-    const sun = new THREE.DirectionalLight(0xDF9B35, 2);
-    sun.position.set(-200, 400, -3000);
-    sun.target.position.set(0, 20, -100);
-    sun.castShadow = true;
-    
-    scene.add(sun)
+    const waicorderLight = new THREE.PointLight(0xFFFFFF, 1, 300, 0.1);
+    waicorderLight.position.set(0, 40, 0)
+    waicorderLight.name = 'waicorderLight';
+    scene.add(waicorderLight)
     scene.add(light)
 
 }

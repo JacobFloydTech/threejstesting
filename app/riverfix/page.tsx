@@ -1,13 +1,15 @@
 "use client"
-import { DustDetail, LoadTree, addCloud, addLights, addMiddleGround, addPlaneWithShader, addWater, changeSunPosition, getMiddleGround, loadMountainGLB , scaleInThings, updatePlaneShader, animateMountains, addUnderlyingLandscape } from './functions';
+import { DustDetail, LoadTree, addCloud, addLights, addMiddleGround, addWater, changeSunPosition, getMiddleGround, loadMountainGLB , scaleInThings, animateMountains, addUnderlyingLandscape } from './functions';
 import { MutableRefObject, useEffect, useRef, useState } from "react"
 import * as THREE from 'three'
-import { BokehPass, EffectComposer, RenderPass, ShaderPass, Water, HorizontalBlurShader, } from 'three/examples/jsm/Addons.js';
-import {   animateRings,  changeTImeValue, handleAnimation, loadHDR, loadDisplay, addWaicorder} from './display';
+import { BokehPass, EffectComposer, RenderPass, ShaderPass, Water, SavePass } from 'three/examples/jsm/Addons.js';
+import {   animateRings,  changeTImeValue, handleAnimation, addWaicorder} from './display';
 import { VignetteShader } from 'three/examples/jsm/Addons.js';
+import { BlendShader } from 'three/examples/jsm/Addons.js';
 import Loading from './loading';
 //@ts-ignore
 import {Noise} from 'noisejs'
+import { addWaicorderMobile } from './displayMobile';
 
 let velocity = -0.05;
 
@@ -57,7 +59,7 @@ async function setScene(ref: MutableRefObject<any>, setLoading: Function) {
     DustDetail(scene, true)
     DustDetail(scene, false)
     addCloud(scene)
-    scene.fog = new THREE.FogExp2( 0xd28032, 0.01 );
+    scene.fog = new THREE.FogExp2( 0xd28032, 0.008 );
     const water = scene.getObjectByName('waterMesh') as Water;
     scene.background = null
     camera.position.set(0, 30, 100);
@@ -65,9 +67,11 @@ async function setScene(ref: MutableRefObject<any>, setLoading: Function) {
     addLights(scene)
     
     LoadTree(scene)
-   // let mixer = await (window.outerWidth >= 1366 ? addWaicorder(scene) :addWaicorderMobile(scene) )
+    let mixer = await (window.outerWidth >= 1366 ? addWaicorder(scene) :addWaicorderMobile(scene) )
 
-    const waicorder = scene.getObjectByName('Armature003') as THREE.Object3D;
+    const waicorder = scene.getObjectByName("Armature008") as THREE.Object3D;
+    waicorder.rotation.z = Math.PI*2;
+   
     const clock = new THREE.Clock();
  
     const mesh = scene.getObjectByName('waterMesh') as THREE.InstancedMesh;
@@ -80,13 +84,10 @@ async function setScene(ref: MutableRefObject<any>, setLoading: Function) {
     let composer = new EffectComposer( renderer );
     const bokehPass = new BokehPass(scene, camera, {
         focus: 100,   // Adjust focus distance (0 to 1)
-        aperture: 0.0002,  // Adjust aperture size (0 to 1)
-        maxblur: 0.005,  // Adjust maximum blur strength (0 to 1)
+        aperture: 0.000001,  // Adjust aperture size (0 to 1)
+        maxblur: 0.0038,  // Adjust maximum blur strength (0 to 1)
         
     });
-   
-    bokehPass.materialBokeh.transparent = true;
-    bokehPass.materialBokeh.opacity = 0;
     bokehPass.materialBokeh.fragmentShader = fragmentShader;
 	composer.addPass( new RenderPass( scene, camera ) );
 	composer.addPass(bokehPass)
@@ -94,8 +95,8 @@ async function setScene(ref: MutableRefObject<any>, setLoading: Function) {
 	var effectVignette = new ShaderPass( shaderVignette );
 	// larger values = darker closer to center
 	// darkness < 1  => lighter edges
-	effectVignette.uniforms[ "offset" ].value = 1;
-	effectVignette.uniforms[ "darkness" ].value = 1;
+	effectVignette.uniforms[ "offset" ].value = 1
+	effectVignette.uniforms[ "darkness" ].value = 0.7;
     effectVignette.renderToScreen = true;
     //composer.addPass(blur)
 	composer.addPass(effectVignette);
@@ -111,13 +112,13 @@ async function setScene(ref: MutableRefObject<any>, setLoading: Function) {
         handleAnimation(camera.position.z, scene);
         changeSunPosition(scene, camera.position.z);
         for (var i = 0; i < points.length; i+=3) { 
-            let time = clock.getElapsedTime()*0.6;
+            let time = clock.getElapsedTime()*0.4;
             const x = points[i]/divide-time
             const y = points[i+1]/divide-time
-            points[i+2] = noise.perlin2(x,y)*3;
+            points[i+2] = noise.perlin2(x,y)*3.2;
         }    mesh.geometry.attributes.position.needsUpdate = true;
 
-        //mixer?.update(0.02);
+        mixer?.update(0.02);
 
         requestAnimationFrame(animate);
         camera.position.z += velocity
@@ -134,13 +135,12 @@ async function setScene(ref: MutableRefObject<any>, setLoading: Function) {
         camera.updateMatrix();
         camera.updateProjectionMatrix();
         if (water) { water.material.uniforms.time.value -= 0.05; }
-        if (waicorder){ waicorder.rotation.y += 0.02}
+        //if (waicorder){ waicorder.rotation.y += 0.05;}
         composer.render()
 
 
     }
     function onWindowResize() {
-        //setBackground(scene)
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
 

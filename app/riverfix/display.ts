@@ -139,8 +139,6 @@ export function addNewGrass(scene: THREE.Scene) {
             }
             
         }
-        console.log(index);
-   
         mesh.instanceMatrix.needsUpdate = true;
         scene.add(mesh)
     })
@@ -150,17 +148,21 @@ export function addNewGrass(scene: THREE.Scene) {
 
 export function addWaicorder(scene :THREE.Scene): Promise<THREE.AnimationMixer |  null> { 
     return new Promise((resolve) => { 
-        var mixer: THREE.AnimationMixer | null =null;
+
         const loader = new GLTFLoader();
-        loader.load('/testingwaicorder.glb', (obj) => { 
-            mixer = new THREE.AnimationMixer(obj.scene);
-            var action = mixer.clipAction(obj.animations.pop()!);
-            action.play();
+        loader.load('/waicorderfinal.glb', (obj) => { 
+            const mixer = new THREE.AnimationMixer(obj.scene);
+            console.log(obj.scene.children);
+            obj.animations.filter(e => ["Cuvette.013Action.001", "Rubber Lid.013Action.001","Armature.003Action.003", 'fake water.001Action.001'].includes(e.name)).forEach((e) => { 
+                let action = mixer.clipAction(e);
+                action.repetitions = 1;
+                action.clampWhenFinished = true;
+                action.play();
+            })
+            console.log(obj.scene);
             obj.scene.name = 'waicorder'
-            action.clampWhenFinished = true;
-            action.repetitions = 1;
             obj.scene.scale.set(0,0,0); 
-            obj.scene.position.set(-2.5, 20, 0)
+            obj.scene.position.set(-12, 20, 0)
             scene.add(obj.scene)
             resolve(mixer)
         })
@@ -197,7 +199,7 @@ export function handleAnimation(currentZ: number, scene: THREE.Scene) {
     const end = -150;
     const startFade = -700;
     const endFade = -1000; 
-    const closestDistance = 30;
+    const closestDistance = window.innerWidth >= 1366 ? 25 : 32;
     ['bottomRing', 'topRing','planeBackground','waicorder', 'text', 'top', 'left', 'right', 'bottom', 'pointLineMesh', 'ringMesh', 'diagonalLineMesh']
         .map((e) => scene.getObjectByName(e) as THREE.Mesh)
         .filter((x) => x)
@@ -220,21 +222,32 @@ export function handleAnimation(currentZ: number, scene: THREE.Scene) {
     handleWaicorder();
     handleGrainMesh(scene, currentZ);
     handlePlane(scene);
-    handleLight();
-    function handleLight() { 
-        const light = scene.getObjectByName('blueLight') as THREE.Light;
-        let scale = 4;
-        if (!light) return
-        
-        light.position.z = currentZ -100;
-        if (currentZ > start) { light.intensity = 0}
-        if (currentZ < end && currentZ > startFade) {light.intensity = scale}
-        if (currentZ > end) { light.intensity = (currentZ-start)/(end-start)*scale}
-        else { let per = (currentZ-startFade)/(endFade-startFade)*scale; light.intensity = scale-per}
-        
+    handleLights();
+    function handleLights() { 
+        ['blueLight', 'waicorderLight'].map(e => scene.getObjectByName(e) as THREE.Light).filter((e) => e).forEach((light, i) => { 
+            if (!light) return
+            let scale  = i == 0 ? 4 : 1.2;
+            let offset = 0;
+            if (i == 0) {offset = -100}
+            else { 
+                if ( window.outerWidth >= 1366) { 
+                    offset = 100
+                } else { 
+                    offset = 400;
+                }
+            }
+            
+            light.position.z = currentZ + offset;
+            if (currentZ > start) { light.intensity = 0}
+            if (currentZ < end && currentZ > startFade) {light.intensity = scale}
+            if (currentZ > end) { light.intensity = (currentZ-start)/(end-start)*scale}
+            else { let per = (currentZ-startFade)/(endFade-startFade)*scale; light.intensity = scale-per}
+            
+        })
+
     }
     function handleWaicorder() { 
-        const baseScale = 45;
+        const baseScale = 30;
         const waicorder = scene.getObjectByName('waicorder') as THREE.Group;
         if (!waicorder) return
         waicorder.position.z += 4;

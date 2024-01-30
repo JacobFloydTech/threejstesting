@@ -19,6 +19,8 @@ export default function Page() {
 
 
 
+
+
 async function setScene(ref: MutableRefObject<any>) { 
     if (!ref.current) { return}
     const scene = new THREE.Scene();
@@ -29,21 +31,41 @@ async function setScene(ref: MutableRefObject<any>) {
     camera.position.z = 50;
     camera.position.y = 10;
     const light = new THREE.PointLight(undefined, 4, 1000, 0.5);
+    const mixer = await loadWaicorder(scene);
     const helper = new THREE.PointLightHelper(light, 1)
     scene.add(helper)
-    const mixer = await loadMountain(scene)
+    scene.add(new THREE.AmbientLight(undefined, 12))
+
     light.position.set(0, 20, 0);
     scene.add(light)
 
     function animate() { 
-    
-        mixer?.update(0.05)
         requestAnimationFrame(animate)
         renderer.render(scene, camera)
+        mixer?.update(0.02)
     }
     animate();
     document.addEventListener('wheel', (e) => { 
         camera.position.z += e.deltaY*0.01;
+    })
+}
+
+function loadWaicorder(scene: THREE.Scene): Promise<THREE.AnimationMixer | null>  { 
+    return new Promise(resolve => { 
+        const loader = new GLTFLoader();
+        loader.load('waicorderfinal.glb', obj => { 
+            const mixer = new THREE.AnimationMixer(obj.scene)
+            obj.scene.scale.set(50,50,50);
+            obj.scene.position.y -= 10;
+            console.log(obj.animations);
+            obj.animations.filter(e => ["Cuvette.013Action.001", "Rubber Lid.013Action.001","Armature.003Action.003"].includes(e.name)).forEach((e) => { 
+                let action = mixer.clipAction(e);
+                action.repetitions = 1;
+                action.clampWhenFinished = true;
+                action.play();
+            })
+            resolve(mixer)
+        })
     })
 }
 

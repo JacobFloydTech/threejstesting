@@ -25,18 +25,20 @@ export function addDisplayTextMobile(scene: THREE.Scene) {
 
 export function addWaicorderMobile(scene :THREE.Scene): Promise<THREE.AnimationMixer |  null> { 
     return new Promise((resolve) => { 
-        var mixer: THREE.AnimationMixer | null =null;
         const loader = new GLTFLoader();
-        loader.load('/waicorderanimation.glb', (obj) => { 
-            mixer = new THREE.AnimationMixer(obj.scene);
-            var action = mixer.clipAction(obj.animations.pop()!);
-            action.play();
+        loader.load('/waicorderfinal.glb', (obj) => { 
+            const mixer = new THREE.AnimationMixer(obj.scene);
+            console.log(obj.scene.children);
+            obj.animations.filter(e => ["Cuvette.013Action.001", "Rubber Lid.013Action.001","Armature.003Action.003", 'fake water.001Action.001'].includes(e.name)).forEach((e) => { 
+                let action = mixer.clipAction(e);
+                action.repetitions = 1;
+                action.clampWhenFinished = true;
+                action.play();
+            })
+            console.log(obj.scene);
             obj.scene.name = 'waicorder'
-            action.clampWhenFinished = true;
-            action.repetitions = 1;
-            console.log(action.time);
             obj.scene.scale.set(0,0,0); 
-            obj.scene.position.set(6, 12, 0)
+            obj.scene.position.set(-3, 10, 0)
             scene.add(obj.scene)
             resolve(mixer)
         })
