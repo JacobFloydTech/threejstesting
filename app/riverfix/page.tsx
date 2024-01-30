@@ -1,14 +1,13 @@
 "use client"
-import { DustDetail, LoadTree, addCloud, addLights, addMiddleGround, addWater, changeSunPosition, getMiddleGround, loadMountainGLB , scaleInThings, } from './functions';
+import { DustDetail, LoadTree, addCloud, addLights, addMiddleGround, addPlaneWithShader, addWater, changeSunPosition, getMiddleGround, loadMountainGLB , scaleInThings, updatePlaneShader, animateMountains, addUnderlyingLandscape } from './functions';
 import { MutableRefObject, useEffect, useRef, useState } from "react"
 import * as THREE from 'three'
-import { BokehPass, EffectComposer, OutputPass, RenderPass, ShaderPass, Water } from 'three/examples/jsm/Addons.js';
+import { BokehPass, EffectComposer, RenderPass, ShaderPass, Water, HorizontalBlurShader, } from 'three/examples/jsm/Addons.js';
 import {   animateRings,  changeTImeValue, handleAnimation, loadHDR, loadDisplay, addWaicorder} from './display';
+import { VignetteShader } from 'three/examples/jsm/Addons.js';
 import Loading from './loading';
 //@ts-ignore
 import {Noise} from 'noisejs'
-import { addWaicorderMobile } from './displayMobile';
-
 
 let velocity = -0.05;
 
@@ -39,7 +38,7 @@ async function setScene(ref: MutableRefObject<any>, setLoading: Function) {
     if (!ref.current) { return }
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 400);
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 500);
     const renderer = new THREE.WebGLRenderer({alpha: true})
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.sortObjects = false;
@@ -48,18 +47,17 @@ async function setScene(ref: MutableRefObject<any>, setLoading: Function) {
     await Promise.all([
         loadMountainGLB(scene),
         addMiddleGround(scene),
-    ])
-
+    ]) 
     getMiddleGround(scene)
     setTimeout(() => {
         setLoading(false)
     }, 200);
-
+    addUnderlyingLandscape(scene)
     addWater(scene)
     DustDetail(scene, true)
     DustDetail(scene, false)
     addCloud(scene)
-    scene.fog = new THREE.FogExp2( 0xd28032, 0.006 );
+    scene.fog = new THREE.FogExp2( 0xd28032, 0.01 );
     const water = scene.getObjectByName('waterMesh') as Water;
     scene.background = null
     camera.position.set(0, 30, 100);
@@ -67,42 +65,46 @@ async function setScene(ref: MutableRefObject<any>, setLoading: Function) {
     addLights(scene)
     
     LoadTree(scene)
-    let mixer = await (window.outerWidth >= 1366 ? addWaicorder(scene) :addWaicorderMobile(scene) )
+   // let mixer = await (window.outerWidth >= 1366 ? addWaicorder(scene) :addWaicorderMobile(scene) )
 
     const waicorder = scene.getObjectByName('Armature003') as THREE.Object3D;
     const clock = new THREE.Clock();
-    //Post processing init
-    const renderPass = new RenderPass(scene, camera);
-    const bokehPass = new BokehPass(scene, camera, { 
-        focus: 12,
-        aperture: 0.00001,
-        maxblur: 0.001, 
-    })
-    var width = window.innerWidth || 1;
-    var height = window.innerHeight || 1;
-    var parameters = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, stencilBuffer: false };
-
-    var renderTarget = new THREE.WebGLRenderTarget( width, height, parameters );
-    renderPass.clearAlpha = 0;
-    renderPass.clearColor = new THREE.Color( 0, 0, 0 );
-    const outputPass = new OutputPass();
-    const composer = new EffectComposer(renderer, renderTarget);
-    composer.addPass(renderPass);
-    composer.addPass(bokehPass);
-    
-
-    const postProccessing = { 
-        composer,
-        bokeh: bokehPass
-    }
+ 
     const mesh = scene.getObjectByName('waterMesh') as THREE.InstancedMesh;
     const points = mesh.geometry.attributes.position.array;
     const divide=  10;
     const noise = new Noise()
-        composer.addPass(outputPass)
+
+    //postprocessing
+
+    let composer = new EffectComposer( renderer );
+    const bokehPass = new BokehPass(scene, camera, {
+        focus: 100,   // Adjust focus distance (0 to 1)
+        aperture: 0.0002,  // Adjust aperture size (0 to 1)
+        maxblur: 0.005,  // Adjust maximum blur strength (0 to 1)
+        
+    });
+   
+    bokehPass.materialBokeh.transparent = true;
+    bokehPass.materialBokeh.opacity = 0;
+    bokehPass.materialBokeh.fragmentShader = fragmentShader;
+	composer.addPass( new RenderPass( scene, camera ) );
+	composer.addPass(bokehPass)
+	var shaderVignette = VignetteShader;
+	var effectVignette = new ShaderPass( shaderVignette );
+	// larger values = darker closer to center
+	// darkness < 1  => lighter edges
+	effectVignette.uniforms[ "offset" ].value = 1;
+	effectVignette.uniforms[ "darkness" ].value = 1;
+    effectVignette.renderToScreen = true;
+    //composer.addPass(blur)
+	composer.addPass(effectVignette);
+
+    
 
     function animate() {
         const scaleValue = 0.7+0.5* Math.abs(Math.sin(Date.now() * 0.0005));
+        animateMountains(scene, camera.position)
         animateRings(scene, scaleValue)
         changeTImeValue(scene, clock.getDelta());
         scaleInThings(scene, camera.position.z);
@@ -115,7 +117,7 @@ async function setScene(ref: MutableRefObject<any>, setLoading: Function) {
             points[i+2] = noise.perlin2(x,y)*3;
         }    mesh.geometry.attributes.position.needsUpdate = true;
 
-        mixer?.update(0.02);
+        //mixer?.update(0.02);
 
         requestAnimationFrame(animate);
         camera.position.z += velocity
@@ -133,7 +135,7 @@ async function setScene(ref: MutableRefObject<any>, setLoading: Function) {
         camera.updateProjectionMatrix();
         if (water) { water.material.uniforms.time.value -= 0.05; }
         if (waicorder){ waicorder.rotation.y += 0.02}
-        renderer.render(scene, camera)
+        composer.render()
 
 
     }
@@ -163,6 +165,7 @@ function roundToNearestIncrement(number: number, increment: number) {
 
 
 
+
 function addMobileListeners() { 
 
     let startY: number | null = 0;
@@ -183,3 +186,106 @@ function addMobileListeners() {
     })
     window.addEventListener('touchend', () => startY = null)
 }
+
+let fragmentShader = `
+
+		#include <common>
+
+		varying vec2 vUv;
+
+		uniform sampler2D tColor;
+		uniform sampler2D tDepth;
+
+		uniform float maxblur; // max blur amount
+		uniform float aperture; // aperture - bigger values for shallower depth of field
+
+		uniform float nearClip;
+		uniform float farClip;
+
+		uniform float focus;
+		uniform float aspect;
+
+		#include <packing>
+
+		float getDepth( const in vec2 screenPosition ) {
+			#if DEPTH_PACKING == 1
+			return unpackRGBAToDepth( texture2D( tDepth, screenPosition ) );
+			#else
+			return texture2D( tDepth, screenPosition ).x;
+			#endif
+		}
+
+		float getViewZ( const in float depth ) {
+			#if PERSPECTIVE_CAMERA == 1
+			return perspectiveDepthToViewZ( depth, nearClip, farClip );
+			#else
+			return orthographicDepthToViewZ( depth, nearClip, farClip );
+			#endif
+		}
+
+
+		void main() {
+
+			vec2 aspectcorrect = vec2( 1.0, aspect );
+
+			float viewZ = getViewZ( getDepth( vUv ) );
+
+			float factor = ( focus + viewZ ); // viewZ is <= 0, so this is a difference equation
+
+			vec2 dofblur = vec2 ( clamp( factor * aperture, -maxblur, maxblur ) );
+
+			vec2 dofblur9 = dofblur * 0.9;
+			vec2 dofblur7 = dofblur * 0.7;
+			vec2 dofblur4 = dofblur * 0.4;
+
+			vec4 col = vec4( 0.0 );
+
+			col += texture2D( tColor, vUv.xy );
+			col += texture2D( tColor, vUv.xy + ( vec2(  0.0,   0.4  ) * aspectcorrect ) * dofblur );
+			col += texture2D( tColor, vUv.xy + ( vec2(  0.15,  0.37 ) * aspectcorrect ) * dofblur );
+			col += texture2D( tColor, vUv.xy + ( vec2(  0.29,  0.29 ) * aspectcorrect ) * dofblur );
+			col += texture2D( tColor, vUv.xy + ( vec2( -0.37,  0.15 ) * aspectcorrect ) * dofblur );
+			col += texture2D( tColor, vUv.xy + ( vec2(  0.40,  0.0  ) * aspectcorrect ) * dofblur );
+			col += texture2D( tColor, vUv.xy + ( vec2(  0.37, -0.15 ) * aspectcorrect ) * dofblur );
+			col += texture2D( tColor, vUv.xy + ( vec2(  0.29, -0.29 ) * aspectcorrect ) * dofblur );
+			col += texture2D( tColor, vUv.xy + ( vec2( -0.15, -0.37 ) * aspectcorrect ) * dofblur );
+			col += texture2D( tColor, vUv.xy + ( vec2(  0.0,  -0.4  ) * aspectcorrect ) * dofblur );
+			col += texture2D( tColor, vUv.xy + ( vec2( -0.15,  0.37 ) * aspectcorrect ) * dofblur );
+			col += texture2D( tColor, vUv.xy + ( vec2( -0.29,  0.29 ) * aspectcorrect ) * dofblur );
+			col += texture2D( tColor, vUv.xy + ( vec2(  0.37,  0.15 ) * aspectcorrect ) * dofblur );
+			col += texture2D( tColor, vUv.xy + ( vec2( -0.4,   0.0  ) * aspectcorrect ) * dofblur );
+			col += texture2D( tColor, vUv.xy + ( vec2( -0.37, -0.15 ) * aspectcorrect ) * dofblur );
+			col += texture2D( tColor, vUv.xy + ( vec2( -0.29, -0.29 ) * aspectcorrect ) * dofblur );
+			col += texture2D( tColor, vUv.xy + ( vec2(  0.15, -0.37 ) * aspectcorrect ) * dofblur );
+
+			col += texture2D( tColor, vUv.xy + ( vec2(  0.15,  0.37 ) * aspectcorrect ) * dofblur9 );
+			col += texture2D( tColor, vUv.xy + ( vec2( -0.37,  0.15 ) * aspectcorrect ) * dofblur9 );
+			col += texture2D( tColor, vUv.xy + ( vec2(  0.37, -0.15 ) * aspectcorrect ) * dofblur9 );
+			col += texture2D( tColor, vUv.xy + ( vec2( -0.15, -0.37 ) * aspectcorrect ) * dofblur9 );
+			col += texture2D( tColor, vUv.xy + ( vec2( -0.15,  0.37 ) * aspectcorrect ) * dofblur9 );
+			col += texture2D( tColor, vUv.xy + ( vec2(  0.37,  0.15 ) * aspectcorrect ) * dofblur9 );
+			col += texture2D( tColor, vUv.xy + ( vec2( -0.37, -0.15 ) * aspectcorrect ) * dofblur9 );
+			col += texture2D( tColor, vUv.xy + ( vec2(  0.15, -0.37 ) * aspectcorrect ) * dofblur9 );
+
+			col += texture2D( tColor, vUv.xy + ( vec2(  0.29,  0.29 ) * aspectcorrect ) * dofblur7 );
+			col += texture2D( tColor, vUv.xy + ( vec2(  0.40,  0.0  ) * aspectcorrect ) * dofblur7 );
+			col += texture2D( tColor, vUv.xy + ( vec2(  0.29, -0.29 ) * aspectcorrect ) * dofblur7 );
+			col += texture2D( tColor, vUv.xy + ( vec2(  0.0,  -0.4  ) * aspectcorrect ) * dofblur7 );
+			col += texture2D( tColor, vUv.xy + ( vec2( -0.29,  0.29 ) * aspectcorrect ) * dofblur7 );
+			col += texture2D( tColor, vUv.xy + ( vec2( -0.4,   0.0  ) * aspectcorrect ) * dofblur7 );
+			col += texture2D( tColor, vUv.xy + ( vec2( -0.29, -0.29 ) * aspectcorrect ) * dofblur7 );
+			col += texture2D( tColor, vUv.xy + ( vec2(  0.0,   0.4  ) * aspectcorrect ) * dofblur7 );
+
+			col += texture2D( tColor, vUv.xy + ( vec2(  0.29,  0.29 ) * aspectcorrect ) * dofblur4 );
+			col += texture2D( tColor, vUv.xy + ( vec2(  0.4,   0.0  ) * aspectcorrect ) * dofblur4 );
+			col += texture2D( tColor, vUv.xy + ( vec2(  0.29, -0.29 ) * aspectcorrect ) * dofblur4 );
+			col += texture2D( tColor, vUv.xy + ( vec2(  0.0,  -0.4  ) * aspectcorrect ) * dofblur4 );
+			col += texture2D( tColor, vUv.xy + ( vec2( -0.29,  0.29 ) * aspectcorrect ) * dofblur4 );
+			col += texture2D( tColor, vUv.xy + ( vec2( -0.4,   0.0  ) * aspectcorrect ) * dofblur4 );
+			col += texture2D( tColor, vUv.xy + ( vec2( -0.29, -0.29 ) * aspectcorrect ) * dofblur4 );
+			col += texture2D( tColor, vUv.xy + ( vec2(  0.0,   0.4  ) * aspectcorrect ) * dofblur4 );
+
+			gl_FragColor = col / 41.0;
+	
+
+		}`

@@ -8,7 +8,7 @@ import { loadDisplayMobile } from './displayMobile';
 
 export function addWater(scene: THREE.Scene) {
 
-    var waterGeometry = new THREE.PlaneGeometry(100, 100*20 , 100, 100);
+    var waterGeometry = new THREE.PlaneGeometry(200, 100*20 , 40, 40);
     const texture =  new THREE.TextureLoader().load('waternormals.jpg', function (texture) {
         texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
         texture.rotation = Math.PI;
@@ -20,9 +20,9 @@ export function addWater(scene: THREE.Scene) {
             textureHeight: 1024,
             waterNormals: texture,
             alpha: 0.8,// Transrency
-            sunColor: 0xffffff,
-            waterColor: 0x5858BC,
-            distortionScale: 1,
+            sunColor: 0xffab26,
+            waterColor: 0x0000FF,
+            distortionScale: 1.5,
             fog: true,
         },
     );
@@ -45,7 +45,7 @@ export function addWater(scene: THREE.Scene) {
 export async function addMiddleGround(scene: THREE.Scene) { 
     return new Promise<void>((resolve, reject) => { 
         const loader = new GLTFLoader()
-        loader.load('/testlandscape.glb', (obj) => { 
+        loader.load('/widerRiver.glb', (obj) => { 
             const texture = new THREE.TextureLoader().load('/testlandscape2.png')
             texture.flipY = false
             const child = obj.scene.children[0] as THREE.Mesh;
@@ -55,8 +55,10 @@ export async function addMiddleGround(scene: THREE.Scene) {
             for (var i = 0; i < instancedMesh.count; i++) { 
                 dummy.rotation.y = Math.PI/2;
                 dummy.position.z = -190*i-1;
+               
                 dummy.scale.set(scale,scale,scale)
                 dummy.receiveShadow = true;
+                console.log(dummy.position);
             
                 dummy.updateMatrix();
                 instancedMesh.setMatrixAt(i, dummy.matrix);
@@ -69,7 +71,7 @@ export async function addMiddleGround(scene: THREE.Scene) {
             addBoulders(scene)
             addNewGrass(scene)
         
-            window.outerWidth >= 1366 ? loadDisplay(scene) : loadDisplayMobile(scene)
+          //  window.outerWidth >= 1366 ? loadDisplay(scene) : loadDisplayMobile(scene)
             
             resolve();
         })
@@ -77,6 +79,63 @@ export async function addMiddleGround(scene: THREE.Scene) {
     })
     
 }
+
+export function addUnderlyingLandscape(scene: THREE.Scene) {
+    const loader = new GLTFLoader();
+    loader.load('underlyingLandscape.glb', gltf => { 
+        const child = gltf.scene.children[0] as THREE.Mesh;
+        const mesh = new THREE.InstancedMesh(child.geometry, child.material, 30)
+        mesh.position.set(0,20,-100)
+        mesh.scale.set(100,100,100);
+        let zOffset =0;
+        let yOffset = -0.2;
+        const xOffset = 2.1
+        const dummy = new THREE.Object3D();
+        for (var i =0 ; i < mesh.count/2; i++) { 
+        
+            dummy.position.set(xOffset,yOffset, zOffset); 
+            dummy.updateMatrix();
+            mesh.setMatrixAt(i, dummy.matrix);
+            zOffset -=1;
+      
+        }
+        zOffset= 0 ;
+        for (var i =mesh.count/2 ; i < mesh.count; i++) { 
+    
+            dummy.position.set(-xOffset,yOffset, zOffset); 
+            dummy.updateMatrix();
+            mesh.setMatrixAt(i, dummy.matrix);
+            zOffset -=1;
+      
+        }
+        scene.add(mesh)
+    })
+}
+
+export function animateMountains(scene: THREE.Scene, position: THREE.Vector3) { 
+    let z = Math.abs(position.z);
+    let maxOffset = 1.2;
+    const maxDistance = 500;
+    ['mountainRight', 'mountainLeft'].map((e) => scene.getObjectByName(e) as THREE.InstancedMesh).filter((e) => e).forEach((e) => { 
+        const dummy = new THREE.Object3D();
+        for (var i = 0; i < e.count;i++) { 
+            const matrix = new THREE.Matrix4();
+            e.getMatrixAt(i, matrix);
+            dummy.applyMatrix4(matrix);
+            dummy.updateMatrix();
+            dummy.rotation.set(0, 0, 0);  
+            dummy.position.setFromMatrixPosition(matrix)
+            let x = Math.abs(dummy.position.x*250)-100;
+            let distance = x-z;
+            let per = Math.min(Math.max((distance/maxDistance),0),1)*maxOffset;
+            dummy.position.y = -per;
+            dummy.updateMatrix();
+            e.setMatrixAt(i, dummy.matrix)
+        }
+        e.instanceMatrix.needsUpdate = true;
+    })
+}
+
 
 export function setPositions(scene: THREE.Scene, mesh: THREE.InstancedMesh, points: THREE.TypedArray, cameraPosition: THREE.Vector3) { 
     const dummy = new THREE.Object3D();
@@ -105,7 +164,7 @@ function getXPosition() {
     let randomNumber: number;
     do {
         randomNumber = Math.random() * 220 - 220 / 2;
-    } while (randomNumber >= -46 && randomNumber <= 46)
+    } while (randomNumber >= -50 && randomNumber <= 50)
     return randomNumber
 }
 
@@ -132,7 +191,7 @@ export function addBoulders(scene: THREE.Scene) {
         for (var instances = 0; instances < plane.count; instances++) { 
             for (var i =0 ; i < points.length; i+=3) { 
                 if (Math.random() > 0.99) { 
-                    dummy.position.set(points[i]+(instances*200), points[i+1]-2, points[i+2])
+                    dummy.position.set(points[i]+(instances*200), points[i+1]-4, points[i+2])
                     dummy.updateMatrix();
                     dummy.scale.set(0,0,0)
                     mesh.setMatrixAt(index, dummy.matrix);
@@ -151,11 +210,40 @@ export function addBoulders(scene: THREE.Scene) {
     scene.add(mesh)
 }
 
+function calculatePercentageToCenter(value: number, min: number, max: number) {
+    // Ensure the value is within the specified range
+    if (value >= min && value <= max) {
+      // Calculate the distance from the center
+      const center = (max + min) / 2;
+      const distanceToCenter = Math.abs(value - center);
+  
+      // Calculate the percentage based on the distance
+      const percentageToCenter = ((max - distanceToCenter) / (max - min)) * 100;
+  
+      return percentageToCenter;
+    } else {
+      console.error('Value is outside the specified range.');
+      return null;
+    }
+  }
+
+  
+
+
 export function LoadTree(scene: THREE.Scene) {
     const loader = new GLTFLoader();
     const count = 60;
-    const positions: THREE.Vector3[] = Array.from({ length: count }).map(() => new THREE.Vector3(getXPosition(), getRandomArbitrary(0, -2), Math.random() * -1000));
+    const positions: THREE.Vector3[] = Array.from({ length: count }).map(() => new THREE.Vector3(getXPosition(), -2, Math.random()*-1000));
     const dummy = new THREE.Object3D();
+
+    const parent = scene.getObjectByName('middle') as THREE.InstancedMesh;
+    if (!parent) return
+    let points = parent.geometry.attributes.position.array;
+    let normalPoints: THREE.Vector3[] = [];
+    for (var i = 0; i < points.length; i+=3) { 
+        normalPoints.push(parent.localToWorld(new THREE.Vector3(points[i], points[i+1], points[i+2])))
+    }
+
     
     loader.load('tree.glb', ({ scene: { children } }) => { 
         children[0].children.forEach((child, i) => { 
@@ -164,8 +252,10 @@ export function LoadTree(scene: THREE.Scene) {
             const material = new THREE.MeshStandardMaterial({color: i == 1 ? "green" : "#63462D"  }) 
             const instancedmesh = new THREE.InstancedMesh((child as THREE.Mesh).geometry,material, count);
             for (var i = 0; i < instancedmesh.count; i++) { 
-                dummy.position.copy(positions[i]);
+                dummy.position.copy(positions[i])
+         
                 dummy.updateMatrix();
+                
                 instancedmesh.setMatrixAt(i, dummy.matrix);
             }
             instancedmesh.castShadow = true;
@@ -189,15 +279,10 @@ export async function loadMountainGLB(scene: THREE.Scene) {
         dracoLoader.setDecoderConfig({type: 'js'})
         loader.setDRACOLoader( dracoLoader );
         loader.load('/testingmountain.glb', (gltf) => {
-        
-          
-            gltf.scene.children.forEach((e) => {
-                addInstanceMesh(e as THREE.Mesh, scene, false)
-            })
-            gltf.scene.children.forEach((e) => {
-                addInstanceMesh(e as THREE.Mesh, scene, true)
-            })
-            resolve();
+        for (var i = 0; i < 2; i++) { 
+            gltf.scene.children.forEach((e) => addInstanceMesh(e as THREE.Mesh, scene, !!i))
+        }
+        resolve();
     
         })
     })
@@ -210,7 +295,7 @@ function addInstanceMesh(e: THREE.Mesh, scene: THREE.Scene, mirror: boolean) {
     const instancedMesh = new THREE.InstancedMesh(e.geometry, material , 10);
     instancedMesh.name = mirror ? "mountainRight" : "mountainLeft";
     instancedMesh.position.y = -20;
-    instancedMesh.position.x = mirror ? -400 : 400;
+    instancedMesh.position.x = mirror ? -440 : 440;
     instancedMesh.rotation.y = mirror ? -Math.PI/2 : Math.PI/2;
     instancedMesh.scale.set(300, 300, 300);
     const dummy = new THREE.Object3D()
@@ -218,7 +303,6 @@ function addInstanceMesh(e: THREE.Mesh, scene: THREE.Scene, mirror: boolean) {
         const matrix = new THREE.Matrix4()
         instancedMesh.getMatrixAt(i, matrix);
         dummy.applyMatrix4(matrix)
-      
         dummy.position.x = mirror ? -1*i : 1*i;
         dummy.updateMatrix()
         instancedMesh.setMatrixAt(i, dummy.matrix)
@@ -257,6 +341,7 @@ export function addGrassGLB(scene: THREE.Scene, offset: number) {
                         dummy.position.set(vector.x, vector.y+4, vector.z);
                         dummy.rotation.y = Math.PI/2;
                         dummy.rotation.z = Math.PI;
+                        dummy.position.y -= 4;
             
                         dummy.updateMatrix();
                         meshes.forEach((m) => m.setMatrixAt(i/3, dummy.matrix))
@@ -326,33 +411,44 @@ export function getMiddleGround(scene: THREE.Scene) {
 }
 
 
-export function animateMountains(scene: THREE.Scene, zPosition: number) {
-    zPosition = Math.abs(zPosition)/100;
-    const getDecimal = (input: number) => Math.abs(Math.floor(input)-input);
-    ["mountainRight", "mountainLeft"].map(e => scene.getObjectByName(e) as THREE.InstancedMesh).filter(e => e).forEach((e) => { 
-        const dummy = new THREE.Object3D();
-        for (var i = 0; i < e.count-1;i++) { 
-            const matrix = new THREE.Matrix4();
-            e.getMatrixAt(i+1, matrix);
-            dummy.position.setFromMatrixPosition(matrix)
 
-                if (i < Math.floor(zPosition)) { 
-                    dummy.scale.set(1,1,1);
-                } else if (i > Math.ceil(zPosition)*i) { 
-                    dummy.scale.set(0,0,0)
-                } else { 
-                    const per = getDecimal(zPosition);
-          
-                    dummy.scale.set(1,per,1)
-                }
-            
- 
-            dummy.updateMatrix();
-            e.setMatrixAt(i+1, dummy.matrix);
+export function addPlaneWithShader(scene: THREE.Scene) { 
+
+    let vertexShader = `
+    varying vec2 vUv;
+    void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+    `
+    const shader = new THREE.ShaderMaterial({
+        vertexShader: vertexShader,
+        fragmentShader: `
+        varying vec2 vUv;
+        
+        void main() {
+            float opacity = 0.12;
+            float exponent = 3.0;
+            vec2 center = vec2(0.5, 0.5);
+            float distance = length(vUv-center)*15.;
+            float darkness = exp(-exponent * distance)-0.2;
+            vec3 color = vec3(darkness);
+            gl_FragColor = vec4(color, opacity);
         }
-        e.instanceMatrix.needsUpdate = true;
+        `, transparent: true,
     })
+    const geometry = new THREE.PlaneGeometry(50, 50);
+    const mesh = new THREE.Mesh(geometry, shader);
+    mesh.position.set(0, 30, -100)
+    mesh.name = 'planeShader'
+    scene.add(mesh);
 }
+export function updatePlaneShader(scene: THREE.Scene, position: number) {
+    const plane = scene.getObjectByName('planeShader');
+    if (!plane) return
+    plane.position.z = position-10;
+}
+
 
 export function addCloud(scene: THREE.Scene) { 
     const loader = new GLTFLoader();
@@ -374,7 +470,7 @@ export function addCloud(scene: THREE.Scene) {
 
 export function addLights(scene: THREE.Scene) { 
     const light = new THREE.PointLight(undefined, 3, 300, 0.1);
-    light.position.set(0, 120, 20);
+    light.position.set(-100, 150, -200);
     light.castShadow = true
     light.shadow.mapSize.width = 2500;
     light.shadow.mapSize.height = 2500;
@@ -387,12 +483,13 @@ export function addLights(scene: THREE.Scene) {
     
     scene.add(sun)
     scene.add(light)
+
 }
 
 export function changeSunPosition(scene: THREE.Scene, position: number) { 
     const light = scene.getObjectByName('light');
     if (!light) return
-    light.position.z = position+50;
+    light.position.z = position-200;
 }
 
 

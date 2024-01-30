@@ -125,7 +125,6 @@ function randomFilling(scene: THREE.Scene) {
         } else { 
             const matrix = new THREE.Matrix4();
             mesh.getMatrixAt(i, matrix);
-       
             const position = new THREE.Vector3();
             matrix.decompose(position, new THREE.Quaternion(), new THREE.Vector3());
             console.log(position);
